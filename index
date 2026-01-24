@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>巡查专家报告 - iOS 18</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --ios-blue: #007AFF;
+            --ios-green: #34C759;
+            --ios-gray: #8E8E93;
+            --ios-card: rgba(255, 255, 255, 0.8);
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: #F2F2F7;
+            color: #1C1C1E;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 16px; }
+        
+        .glass-card {
+            background: var(--ios-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 18px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .section-title { font-size: 13px; color: var(--ios-gray); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; }
+
+        /* 布局网格 */
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .data-item { border-bottom: 0.5px solid rgba(0,0,0,0.05); padding: 8px 0; }
+        .data-item:last-child { border: none; }
+        .label { font-size: 14px; color: #3A3A3C; }
+        .value { font-size: 16px; font-weight: 600; float: right; }
+        .sub-value { font-size: 12px; color: var(--ios-gray); display: block; margin-top: 4px; }
+
+        /* 进度条 */
+        .progress-container { width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--ios-blue); border-radius: 3px; transition: width 0.6s ease; }
+
+        /* 按钮与交互 */
+        .upload-area { border: 2px dashed var(--ios-blue); text-align: center; cursor: pointer; color: var(--ios-blue); padding: 30px; }
+        .ios-btn { background: var(--ios-blue); color: white; border: none; border-radius: 12px; padding: 14px; font-weight: 600; width: 100%; margin-top: 10px; cursor: pointer; }
+
+        /* 等级奖励列表 */
+        .award-list { display: flex; flex-direction: column; gap: 8px; }
+        .award-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+        .status-tag { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+        .status-unlocked { background: rgba(52, 199, 89, 0.15); color: var(--ios-green); }
+        .status-locked { background: rgba(142, 142, 147, 0.15); color: var(--ios-gray); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="font-weight: 800; margin-bottom: 4px;">巡查专家报告</h1>
+    
+    <div class="glass-card upload-area" id="dropZone">
+        <p>点击或拖拽上传数据文件 (.txt/.json)</p>
+        <input type="file" id="fileInput" hidden accept=".txt,.json">
+    </div>
+
+    <div id="reportContent" style="display: none;">
+        <div class="glass-card">
+            <div class="section-title">核心身份</div>
+            <div class="data-grid">
+                <div class="data-item"><span class="label">当前头衔</span><span class="value" id="t-level"></span></div>
+                <div class="data-item"><span class="label">头衔 ID</span><span class="value" id="t-id"></span></div>
+            </div>
+            <div class="data-item" style="border:none">
+                <span class="label" id="exp-title">当前等级</span><span class="value" id="exp-val"></span>
+                <div class="progress-container"><div class="progress-fill" id="exp-bar"></div></div>
+                <span class="sub-value" id="exp-diff"></span>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="section-title">巡查统计（累计与近期）</div>
+            <div class="data-grid">
+                <div class="data-item"><span class="label">总巡查数</span><span class="value" id="d-total"></span></div>
+                <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc" style="color:var(--ios-green)"></span></div>
+                <div class="data-item"><span class="label">正确案例</span><span class="value" id="d-right"></span></div>
+                <div class="data-item"><span class="label">受罚案例</span><span class="value" id="d-wrong" style="color:#FF3B30"></span></div>
+                <div class="data-item"><span class="label">月度准确率</span><span class="value" id="d-m-acc"></span></div>
+                <div class="data-item"><span class="label">月度排名</span><span class="value" id="d-rank"></span></div>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="section-title">赛季任务进度</div>
+            <div class="data-item">
+                <span class="label">积分任务 (158/160)</span>
+                <div class="progress-container"><div class="progress-fill" style="width: 98.7%;"></div></div>
+            </div>
+            <div class="data-grid" style="margin-top: 10px;">
+                <div class="data-item"><span class="label">赛季正确数</span><span class="value" id="s-right"></span></div>
+                <div class="data-item"><span class="label">目标达标</span><span class="value" id="s-target"></span></div>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="section-title">评审头衔奖励解锁状态</div>
+            <div class="award-list" id="award-list"></div>
+        </div>
+
+        <button class="ios-btn" onclick="toggleChart()">查看每日活跃趋势</button>
+        <div class="glass-card" id="chartBox" style="display:none; margin-top:16px; height: 300px;">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+
+    dropZone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const text = event.target.result;
+                const jsonMatch = text.match(/\{.*\}/s);
+                const data = JSON.parse(jsonMatch[0]).data;
+                renderReport(data);
+            } catch (err) { alert("解析失败，请检查文件内容"); }
+        };
+        reader.readAsText(file);
+    }
+
+    function renderReport(data) {
+        const s = data.query_user_judge_summary;
+        const awards = data.query_title_award.record_list;
+
+        // 核心身份
+        document.getElementById('t-level').innerText = s.title_level;
+        document.getElementById('t-id').innerText = s.title_level_id;
+        document.getElementById('exp-val').innerText = `Lv.${s.exp_level}`;
+        document.getElementById('exp-title').innerText = `当前巡查等级 (Lv.${s.exp_level})`;
+        const prog = parseFloat(s.exp_process);
+        document.getElementById('exp-bar').style.width = prog + '%';
+        document.getElementById('exp-diff').innerText = `等级进度 ${prog}%，距离下一级还差 ${(100-prog).toFixed(2)}%`;
+
+        // 巡查统计
+        document.getElementById('d-total').innerText = s.life_total_case_num;
+        document.getElementById('d-acc').innerText = s.recent_accuracy;
+        document.getElementById('d-right').innerText = s.life_right_case_num;
+        document.getElementById('d-wrong').innerText = s.life_right_punish_case_num;
+        document.getElementById('d-m-acc').innerText = s.month_accuracy;
+        document.getElementById('d-rank').innerText = s.month_rank_desc;
+
+        // 赛季
+        document.getElementById('s-right').innerText = s.season_right_case_num;
+        document.getElementById('s-target').innerText = s.target_title_finish_num >= s.target_title_require_num ? "已达标" : "未达标";
+
+        // 奖励列表
+        const awardHtml = awards.map(a => `
+            <div class="award-row">
+                <span style="font-size:15px">${a.title_level_name}</span>
+                <span class="status-tag ${a.status === 1 ? 'status-unlocked' : 'status-locked'}">
+                    ${a.status === 1 ? '● 已解锁' : '○ 未解锁'}
+                </span>
+            </div>
+        `).join('');
+        document.getElementById('award-list').innerHTML = awardHtml;
+
+        document.getElementById('reportContent').style.display = 'block';
+        window.historyData = data.query_judge_record_summary.month_num_summary;
+    }
+
+    let chartObj = null;
+    function toggleChart() {
+        const box = document.getElementById('chartBox');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        if (box.style.display === 'block') {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const labels = Object.keys(window.historyData).sort();
+            const vals = labels.map(l => window.historyData[l]);
+            if(chartObj) chartObj.destroy();
+            chartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.map(l => l.substring(5)),
+                    datasets: [{ label: '巡查数', data: vals, backgroundColor: '#007AFF', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false} } }
+            });
+        }
+    }
+</script>
+</body>
+</html>
