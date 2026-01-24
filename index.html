@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>巡查专家报告 - iOS 18</title>
+    <title>巡查专家报告</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -73,7 +73,7 @@
 
     <div id="reportContent" style="display: none;">
         <div class="glass-card">
-            <div class="section-title">核心身份</div>
+            <div class="section-title">核心数据</div>
             <div class="data-grid">
                 <div class="data-item"><span class="label">当前头衔</span><span class="value" id="t-level"></span></div>
                 <div class="data-item"><span class="label">头衔 ID</span><span class="value" id="t-id"></span></div>
@@ -91,7 +91,7 @@
                 <div class="data-item"><span class="label">总巡查数</span><span class="value" id="d-total"></span></div>
                 <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc" style="color:var(--ios-green)"></span></div>
                 <div class="data-item"><span class="label">正确案例</span><span class="value" id="d-right"></span></div>
-                <div class="data-item"><span class="label">受罚案例</span><span class="value" id="d-wrong" style="color:#FF3B30"></span></div>
+                <div class="data-item"><span class="label">查封数</span><span class="value" id="d-wrong" style="color:#FF3B30"></span></div>
                 <div class="data-item"><span class="label">月度准确率</span><span class="value" id="d-m-acc"></span></div>
                 <div class="data-item"><span class="label">月度排名</span><span class="value" id="d-rank"></span></div>
             </div>
@@ -110,11 +110,11 @@
         </div>
 
         <div class="glass-card">
-            <div class="section-title">评审头衔奖励解锁状态</div>
+            <div class="section-title">巡查奖励解锁状态</div>
             <div class="award-list" id="award-list"></div>
         </div>
 
-        <button class="ios-btn" onclick="toggleChart()">查看每日活跃趋势</button>
+        <button class="ios-btn" onclick="toggleChart()">查看每日巡查数据</button>
         <div class="glass-card" id="chartBox" style="display:none; margin-top:16px; height: 300px;">
             <canvas id="mainChart"></canvas>
         </div>
