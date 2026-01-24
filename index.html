@@ -10,6 +10,8 @@
         :root {
             --ios-blue: #007AFF;
             --ios-green: #34C759;
+            --ios-orange: #FF9500;
+            --ios-red: #FF3B30;
             --ios-gray: #8E8E93;
             --ios-card: rgba(255, 255, 255, 0.8);
             --ios-bg: #F2F2F7;
@@ -103,8 +105,9 @@
             <div class="glass-card">
                 <div class="section-title">核心数据</div>
                 <div class="data-grid">
-                    <div class="data-item"><span class="label">当前等级</span><span class="value" id="t-level"></span></div>
-                    <div class="data-item"><span class="label">等级 ID</span><span class="value" id="t-id"></span></div>
+                    <div class="data-item"><span class="label">当前头衔</span><span class="value" id="t-level"></span></div>
+                    <div class="data-item"><span class="label">巡查段位</span><span class="value" id="t-star"></span></div>
+                    <div class="data-item"><span class="label">头衔 ID</span><span class="value" id="t-id"></span></div>
                 </div>
                 <div class="data-item" style="border:none">
                     <span class="label" id="exp-title">当前巡查等级</span><span class="value" id="exp-val"></span>
@@ -116,12 +119,17 @@
             <div class="glass-card">
                 <div class="section-title">巡查统计</div>
                 <div class="data-grid">
-                    <div class="data-item"><span class="label">总案例数</span><span class="value" id="d-total"></span></div>
-                    <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc" style="color:var(--ios-green)"></span></div>
-                    <div class="data-item"><span class="label">正确案例</span><span class="value" id="d-right"></span></div>
-                    <div class="data-item"><span class="label">查封数</span><span class="value" id="d-wrong" style="color:#FF3B30"></span></div>
+                    <div class="data-item"><span class="label">总巡查正确数</span><span class="value" id="d-total"></span></div>
+                    <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc"></span></div>
+                    <div class="data-item"><span class="label">视频巡查数</span><span class="value" id="d-right"></span></div>
+                    <div class="data-item"><span class="label">查封数</span><span class="value" id="d-wrong" style="color: #1C1C1E;"></span></div>
+                    
+                    <div class="data-item"><span class="label">行为巡查数</span><span class="value" id="d-behave"></span></div>
+                    <div class="data-item"><span class="label">猎鹰巡查查封数</span><span class="value" id="d-falcon"></span></div>
+                    
                     <div class="data-item"><span class="label">月度准确率</span><span class="value" id="d-m-acc"></span></div>
                     <div class="data-item"><span class="label">月度排名</span><span class="value" id="d-rank"></span></div>
+                    <div class="data-item"><span class="label">本月巡查数</span><span class="value" id="d-m-total"></span></div>
                 </div>
             </div>
 
@@ -132,7 +140,7 @@
 
             <div class="glass-card" style="margin-bottom: 20px;">
                 <div class="section-title">
-                    <span>每日巡查记录</span>
+                    <span>每日巡查趋势</span>
                     <button id="toggleAxis" class="btn-toggle" data-html2canvas-ignore="true">切换横向显示</button>
                 </div>
                 <div id="chartBox">
@@ -177,20 +185,51 @@
     function renderReport(data) {
         const s = data.query_user_judge_summary;
         document.getElementById('dropZone').style.display = 'none';
+        
+        // 核心数据渲染
         document.getElementById('t-level').innerText = s.title_level;
+        document.getElementById('t-star').innerText = s.expert_level_star + " 星";
         document.getElementById('t-id').innerText = s.title_level_id;
         document.getElementById('exp-val').innerText = `Lv.${s.exp_level}`;
         const prog = parseFloat(s.exp_process);
         document.getElementById('exp-bar').style.width = prog + '%';
         document.getElementById('exp-diff').innerText = `进度 ${prog}%，还差 ${(100-prog).toFixed(2)}%`;
 
-        document.getElementById('d-total').innerText = s.life_total_case_num;
-        document.getElementById('d-acc').innerText = s.recent_accuracy;
-        document.getElementById('d-right').innerText = s.life_right_case_num;
-        document.getElementById('d-wrong').innerText = s.life_right_punish_case_num;
+        // --- 逻辑调整：直接读取各字段 ---
+        const falconNum = parseInt(s.life_real_time_right_punish_case_num) || 0;
+        const behaveNum = parseInt(s.behaviour_life_right_punish_case_num) || 0;
+        const videoNum = parseInt(s.life_right_case_num) || 0; // 视频巡查直接对应这个字段
+        
+        // 计算加权总和
+        const customTotal = (falconNum * 5) + behaveNum + videoNum;
+        document.getElementById('d-total').innerText = customTotal;
+
+        // 渲染基础数值
+        document.getElementById('d-right').innerText = videoNum; // 视频巡查
+        document.getElementById('d-behave').innerText = behaveNum; // 行为
+        document.getElementById('d-falcon').innerText = falconNum; // 猎鹰
+        document.getElementById('d-wrong').innerText = s.life_right_punish_case_num; // 查封数
+
+        // 准确率配色
+        const accElement = document.getElementById('d-acc');
+        const accValue = parseFloat(s.recent_accuracy);
+        accElement.innerText = s.recent_accuracy;
+        if (accValue >= 80) {
+            accElement.style.color = 'var(--ios-green)';
+        } else if (accValue >= 60) {
+            accElement.style.color = 'var(--ios-orange)';
+        } else {
+            accElement.style.color = 'var(--ios-red)';
+        }
+
         document.getElementById('d-m-acc').innerText = s.month_accuracy;
         document.getElementById('d-rank').innerText = s.month_rank_desc;
 
+        // 计算本月柱状图总巡查数
+        const monthTotal = Object.values(chartData).reduce((a, b) => a + b, 0);
+        document.getElementById('d-m-total').innerText = monthTotal;
+
+        // 奖励状态
         const awards = data.query_title_award.record_list;
         document.getElementById('award-list').innerHTML = awards.map(a => `
             <div class="award-row">
@@ -207,6 +246,7 @@
         updateChart();
     }
 
+    // ... (后续 updateChart 和 exportAsImage 函数保持不变)
     document.getElementById('toggleAxis').onclick = () => {
         isHorizontal = !isHorizontal;
         document.getElementById('toggleAxis').innerText = isHorizontal ? "切换纵向显示" : "切换横向显示";
@@ -219,53 +259,28 @@
         const vals = labels.map(l => chartData[l]);
         const inner = document.getElementById('chartInner');
         const box = document.getElementById('chartBox');
-
         if (myChart) myChart.destroy();
-
         if (isHorizontal) {
-            inner.style.width = '100%';
-            inner.style.height = (labels.length * 35) + 'px';
-            box.style.height = 'auto';
+            inner.style.width = '100%'; inner.style.height = (labels.length * 35) + 'px'; box.style.height = 'auto';
         } else {
-            // 纵向模式：加大宽度比例，确保日期有旋转空间
             const minWidth = labels.length * 45; 
-            inner.style.width = Math.max(box.offsetWidth, minWidth) + 'px';
-            inner.style.height = '280px';
-            box.style.height = '280px';
+            inner.style.width = Math.max(box.offsetWidth, minWidth) + 'px'; inner.style.height = '280px'; box.style.height = '280px';
         }
-
         myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels.map(l => l.substring(5)),
                 datasets: [{
-                    label: '巡查数',
-                    data: vals,
-                    backgroundColor: '#007AFF',
-                    borderRadius: 4,
-                    barPercentage: 0.7
+                    label: '巡查数', data: vals, backgroundColor: '#007AFF', borderRadius: 4, barPercentage: 0.7
                 }]
             },
             options: {
                 indexAxis: isHorizontal ? 'y' : 'x',
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 200 },
+                responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { 
-                        grid: { display: !isHorizontal }, 
-                        ticks: { 
-                            font: { size: 10 },
-                            autoSkip: false,      // 强制不跳过日期
-                            maxRotation: 45,      // 强制倾斜显示日期，解决遮挡问题
-                            minRotation: 45
-                        } 
-                    },
-                    y: { 
-                        grid: { display: isHorizontal }, 
-                        ticks: { font: { size: 10 } } 
-                    }
+                    x: { grid: { display: !isHorizontal }, ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 45, minRotation: 45 } },
+                    y: { grid: { display: isHorizontal }, ticks: { font: { size: 10 } } }
                 }
             }
         });
@@ -276,28 +291,18 @@
         const btn = document.querySelector('.download-btn');
         const originalText = btn.innerText;
         btn.innerText = "正在渲染长图...";
-        
         try {
             window.scrollTo(0,0);
             const canvas = await html2canvas(target, {
-                backgroundColor: '#F2F2F7',
-                scale: 2,
-                useCORS: true,
-                width: target.scrollWidth,
-                height: target.scrollHeight,
-                windowWidth: target.scrollWidth,
-                windowHeight: target.scrollHeight
+                backgroundColor: '#F2F2F7', scale: 2, useCORS: true,
+                width: target.scrollWidth, height: target.scrollHeight,
+                windowWidth: target.scrollWidth, windowHeight: target.scrollHeight
             });
-            
             const link = document.createElement('a');
             link.download = `巡查报告_${new Date().getTime()}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
-        } catch (err) {
-            alert("保存失败");
-        } finally {
-            btn.innerText = originalText;
-        }
+        } catch (err) { alert("保存失败"); } finally { btn.innerText = originalText; }
     }
 </script>
 </body>
