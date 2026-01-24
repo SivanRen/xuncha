@@ -5,25 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>巡查专家报告</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root {
             --ios-blue: #007AFF;
             --ios-green: #34C759;
             --ios-gray: #8E8E93;
             --ios-card: rgba(255, 255, 255, 0.8);
+            --ios-bg: #F2F2F7;
         }
 
         body {
             font-family: -apple-system, system-ui, sans-serif;
-            background-color: #F2F2F7;
+            background-color: var(--ios-bg);
             color: #1C1C1E;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             display: flex;
             justify-content: center;
         }
 
-        .container { width: 100%; max-width: 650px; display: flex; flex-direction: column; gap: 16px; }
+        /* 截图专用包装层：提供四周留白 */
+        .screenshot-wrapper {
+            padding: 40px 20px; /* 顶部留出40px，左右20px */
+            width: 100%;
+            max-width: 650px;
+            box-sizing: border-box;
+            background-color: var(--ios-bg);
+        }
+
+        .container { 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 16px; 
+        }
         
         .glass-card {
             background: var(--ios-card);
@@ -37,7 +53,6 @@
 
         .section-title { font-size: 13px; color: var(--ios-gray); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; text-align: left; }
 
-        /* 布局网格 */
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .data-item { border-bottom: 0.5px solid rgba(0,0,0,0.05); padding: 8px 0; }
         .data-item:last-child { border: none; }
@@ -45,14 +60,11 @@
         .value { font-size: 16px; font-weight: 600; float: right; }
         .sub-value { font-size: 12px; color: var(--ios-gray); display: block; margin-top: 4px; }
 
-        /* 进度条 */
         .progress-container { width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; margin-top: 8px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--ios-blue); border-radius: 3px; transition: width 0.6s ease; }
 
-        /* 上传区 */
         .upload-area { border: 2px dashed var(--ios-blue); text-align: center; cursor: pointer; color: var(--ios-blue); padding: 30px; }
         
-        /* 奖励列表 */
         .award-list { display: flex; flex-direction: column; gap: 8px; }
         .award-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
         .status-tag { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
@@ -60,68 +72,97 @@
         .status-locked { background: rgba(142, 142, 147, 0.15); color: var(--ios-gray); }
 
         #chartBox { height: 280px; width: 100%; margin-top: 8px; }
+
+        /* 下载控件 */
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: none;
+        }
+        .download-btn {
+            background: rgba(0, 122, 255, 0.95);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 8px 20px rgba(0,122,255,0.3);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+        .download-btn:active { transform: scale(0.92); }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1 id="pageTitle" style="font-weight: 800; margin-bottom: 4px;">巡查专家报告</h1>
-    
-    <div class="glass-card upload-area" id="dropZone">
-        <p>点击或拖拽上传数据文件 (.txt/.json)</p>
-        <input type="file" id="fileInput" hidden accept=".txt,.json">
+<div class="screenshot-wrapper" id="captureTarget">
+    <div class="container">
+        <h1 id="pageTitle" style="font-weight: 800; margin-bottom: 4px; padding-left: 5px;">巡查专家报告</h1>
+        
+        <div class="glass-card upload-area" id="dropZone">
+            <p>点击或拖拽上传数据文件 (.txt/.json)</p>
+            <input type="file" id="fileInput" hidden accept=".txt,.json">
+        </div>
+
+        <div id="reportContent" style="display: none;">
+            <div class="glass-card">
+                <div class="section-title">核心数据</div>
+                <div class="data-grid">
+                    <div class="data-item"><span class="label">当前头衔</span><span class="value" id="t-level"></span></div>
+                    <div class="data-item"><span class="label">头衔 ID</span><span class="value" id="t-id"></span></div>
+                </div>
+                <div class="data-item" style="border:none">
+                    <span class="label" id="exp-title">当前巡查等级</span><span class="value" id="exp-val"></span>
+                    <div class="progress-container"><div class="progress-fill" id="exp-bar"></div></div>
+                    <span class="sub-value" id="exp-diff"></span>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="section-title">巡查统计</div>
+                <div class="data-grid">
+                    <div class="data-item"><span class="label">总案例数</span><span class="value" id="d-total"></span></div>
+                    <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc" style="color:var(--ios-green)"></span></div>
+                    <div class="data-item"><span class="label">正确案例</span><span class="value" id="d-right"></span></div>
+                    <div class="data-item"><span class="label">查封数</span><span class="value" id="d-wrong" style="color:#FF3B30"></span></div>
+                    <div class="data-item"><span class="label">月度准确率</span><span class="value" id="d-m-acc"></span></div>
+                    <div class="data-item"><span class="label">月度排名</span><span class="value" id="d-rank"></span></div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="section-title">赛季任务进度</div>
+                <div class="data-item">
+                    <span class="label" id="s-task-label">积分任务</span>
+                    <div class="progress-container"><div class="progress-fill" id="s-task-bar"></div></div>
+                </div>
+                <div class="data-grid" style="margin-top: 10px;">
+                    <div class="data-item"><span class="label">赛季正确数</span><span class="value" id="s-right"></span></div>
+                    <div class="data-item"><span class="label">目标达标</span><span class="value" id="s-target"></span></div>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="section-title">巡查奖励解锁状态</div>
+                <div class="award-list" id="award-list"></div>
+            </div>
+
+            <div class="glass-card" style="margin-bottom: 20px;"> <div class="section-title">每日巡查趋势</div>
+                <div id="chartBox">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
+</div>
 
-    <div id="reportContent" style="display: none;">
-        <div class="glass-card">
-            <div class="section-title">核心身份</div>
-            <div class="data-grid">
-                <div class="data-item"><span class="label">当前头衔</span><span class="value" id="t-level"></span></div>
-                <div class="data-item"><span class="label">头衔 ID</span><span class="value" id="t-id"></span></div>
-            </div>
-            <div class="data-item" style="border:none">
-                <span class="label" id="exp-title">当前巡查等级</span><span class="value" id="exp-val"></span>
-                <div class="progress-container"><div class="progress-fill" id="exp-bar"></div></div>
-                <span class="sub-value" id="exp-diff"></span>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <div class="section-title">巡查统计（累计与近期）</div>
-            <div class="data-grid">
-                <div class="data-item"><span class="label">总案例数</span><span class="value" id="d-total"></span></div>
-                <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc" style="color:var(--ios-green)"></span></div>
-                <div class="data-item"><span class="label">正确案例</span><span class="value" id="d-right"></span></div>
-                <div class="data-item"><span class="label">查封数</span><span class="value" id="d-wrong" style="color:#FF3B30"></span></div>
-                <div class="data-item"><span class="label">月度准确率</span><span class="value" id="d-m-acc"></span></div>
-                <div class="data-item"><span class="label">月度排名</span><span class="value" id="d-rank"></span></div>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <div class="section-title">赛季任务进度</div>
-            <div class="data-item">
-                <span class="label" id="s-task-label">积分任务</span>
-                <div class="progress-container"><div class="progress-fill" id="s-task-bar"></div></div>
-            </div>
-            <div class="data-grid" style="margin-top: 10px;">
-                <div class="data-item"><span class="label">赛季正确数</span><span class="value" id="s-right"></span></div>
-                <div class="data-item"><span class="label">目标达标</span><span class="value" id="s-target"></span></div>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <div class="section-title">评审头衔奖励解锁状态</div>
-            <div class="award-list" id="award-list"></div>
-        </div>
-
-        <div class="glass-card">
-            <div class="section-title">每日巡查趋势</div>
-            <div id="chartBox">
-                <canvas id="mainChart"></canvas>
-            </div>
-        </div>
-    </div>
+<div class="controls" id="exportControls">
+    <button class="download-btn" onclick="exportAsImage()">保存全图报告</button>
 </div>
 
 <script>
@@ -139,7 +180,7 @@
                 const jsonMatch = text.match(/\{.*\}/s);
                 const data = JSON.parse(jsonMatch[0]).data;
                 renderReport(data);
-            } catch (err) { alert("解析失败，请检查文件内容是否为有效的JSON"); }
+            } catch (err) { alert("解析失败"); }
         };
         reader.readAsText(file);
     }
@@ -148,10 +189,7 @@
         const s = data.query_user_judge_summary;
         const awards = data.query_title_award.record_list;
 
-        // 隐藏上传区域
         document.getElementById('dropZone').style.display = 'none';
-
-        // 填充核心身份 
         document.getElementById('t-level').innerText = s.title_level;
         document.getElementById('t-id').innerText = s.title_level_id;
         document.getElementById('exp-val').innerText = `Lv.${s.exp_level}`;
@@ -161,7 +199,6 @@
         document.getElementById('exp-bar').style.width = prog + '%';
         document.getElementById('exp-diff').innerText = `等级进度 ${prog}%，距离下一级还差 ${(100-prog).toFixed(2)}%`;
 
-        // 填充统计数据 
         document.getElementById('d-total').innerText = s.life_total_case_num;
         document.getElementById('d-acc').innerText = s.recent_accuracy;
         document.getElementById('d-right').innerText = s.life_right_case_num;
@@ -169,16 +206,12 @@
         document.getElementById('d-m-acc').innerText = s.month_accuracy;
         document.getElementById('d-rank').innerText = s.month_rank_desc;
 
-        // 赛季进度解析 
         const sTask = s.season_credit_task_progress.split('_');
-        const sDone = parseInt(sTask[0]);
-        const sTotal = parseInt(sTask[1]);
-        document.getElementById('s-task-label').innerText = `积分任务 (${sDone}/${sTotal})`;
-        document.getElementById('s-task-bar').style.width = (sDone / sTotal * 100) + '%';
+        document.getElementById('s-task-label').innerText = `积分任务 (${sTask[0]}/${sTask[1]})`;
+        document.getElementById('s-task-bar').style.width = (parseInt(sTask[0]) / parseInt(sTask[1]) * 100) + '%';
         document.getElementById('s-right').innerText = s.season_right_case_num;
         document.getElementById('s-target').innerText = s.target_title_finish_num >= s.target_title_require_num ? "已达标" : "未达标";
 
-        // 奖励列表 
         const awardHtml = awards.map(a => `
             <div class="award-row">
                 <span style="font-size:15px">${a.title_level_name}</span>
@@ -189,8 +222,8 @@
         `).join('');
         document.getElementById('award-list').innerHTML = awardHtml;
 
-        // 显示报告并渲染柱状图
         document.getElementById('reportContent').style.display = 'block';
+        document.getElementById('exportControls').style.display = 'block';
         initChart(data.query_judge_record_summary.month_num_summary);
     }
 
@@ -202,7 +235,7 @@
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels.map(l => l.substring(5)), // 截取日期月-日
+                labels: labels.map(l => l.substring(5)),
                 datasets: [{
                     label: '巡查数',
                     data: vals,
@@ -214,6 +247,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: { duration: 0 },
                 plugins: { legend: { display: false } },
                 scales: {
                     y: { grid: { display: false }, ticks: { color: '#8E8E93', font: { size: 10 } } },
@@ -221,6 +255,37 @@
                 }
             }
         });
+    }
+
+    async function exportAsImage() {
+        const target = document.getElementById('captureTarget');
+        const btn = document.querySelector('.download-btn');
+        btn.innerText = "正在生成长图...";
+        
+        try {
+            // 滚动到顶部以确保截图完整
+            window.scrollTo(0,0);
+            
+            const canvas = await html2canvas(target, {
+                backgroundColor: '#F2F2F7', 
+                scale: 2, 
+                useCORS: true,
+                logging: false,
+                width: target.offsetWidth,
+                height: target.offsetHeight
+            });
+            
+            const link = document.createElement('a');
+            const d = new Date();
+            const fmtDate = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+            link.download = `巡查报告_${fmtDate}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            btn.innerText = "保存全图报告";
+        } catch (err) {
+            alert("生成失败，请稍后再试");
+            btn.innerText = "保存全图报告";
+        }
     }
 </script>
 </body>
