@@ -25,21 +25,15 @@
             justify-content: center;
         }
 
-        /* 截图专用包装层：提供四周留白 */
         .screenshot-wrapper {
-            padding: 40px 20px; /* 顶部留出40px，左右20px */
+            padding: 40px 20px;
             width: 100%;
             max-width: 650px;
             box-sizing: border-box;
             background-color: var(--ios-bg);
         }
 
-        .container { 
-            width: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 16px; 
-        }
+        .container { width: 100%; display: flex; flex-direction: column; gap: 16px; }
         
         .glass-card {
             background: var(--ios-card);
@@ -51,7 +45,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
-        .section-title { font-size: 13px; color: var(--ios-gray); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; text-align: left; }
+        .section-title { font-size: 13px; color: var(--ios-gray); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .data-item { border-bottom: 0.5px solid rgba(0,0,0,0.05); padding: 8px 0; }
@@ -65,44 +59,40 @@
 
         .upload-area { border: 2px dashed var(--ios-blue); text-align: center; cursor: pointer; color: var(--ios-blue); padding: 30px; }
         
-        .award-list { display: flex; flex-direction: column; gap: 8px; }
-        .award-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+        .award-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 0.5px solid rgba(0,0,0,0.05); }
+        .award-row:last-child { border: none; }
         .status-tag { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
         .status-unlocked { background: rgba(52, 199, 89, 0.15); color: var(--ios-green); }
         .status-locked { background: rgba(142, 142, 147, 0.15); color: var(--ios-gray); }
 
-        #chartBox { height: 280px; width: 100%; margin-top: 8px; }
+        #chartBox { width: 100%; margin-top: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .chart-inner { min-width: 100%; transition: height 0.3s; }
 
-        /* 下载控件 */
-        .controls {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            display: none;
+        .btn-toggle {
+            background: rgba(0, 122, 255, 0.1);
+            color: var(--ios-blue);
+            border: none;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
         }
+
+        .controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100; display: none; }
         .download-btn {
             background: rgba(0, 122, 255, 0.95);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: 600;
-            box-shadow: 0 8px 20px rgba(0,122,255,0.3);
-            cursor: pointer;
-            backdrop-filter: blur(10px);
-            transition: all 0.2s;
+            color: white; border: none; padding: 14px 28px; border-radius: 30px;
+            font-size: 16px; font-weight: 600; box-shadow: 0 8px 20px rgba(0,122,255,0.3);
+            cursor: pointer; backdrop-filter: blur(10px);
         }
-        .download-btn:active { transform: scale(0.92); }
     </style>
 </head>
 <body>
 
 <div class="screenshot-wrapper" id="captureTarget">
     <div class="container">
-        <h1 id="pageTitle" style="font-weight: 800; margin-bottom: 4px; padding-left: 5px;">巡查专家报告</h1>
+        <h1 style="font-weight: 800; margin-bottom: 4px; padding-left: 5px;">巡查专家报告</h1>
         
         <div class="glass-card upload-area" id="dropZone">
             <p>点击或拖拽上传数据文件 (.txt/.json)</p>
@@ -136,25 +126,19 @@
             </div>
 
             <div class="glass-card">
-                <div class="section-title">赛季任务进度</div>
-                <div class="data-item">
-                    <span class="label" id="s-task-label">积分任务</span>
-                    <div class="progress-container"><div class="progress-fill" id="s-task-bar"></div></div>
-                </div>
-                <div class="data-grid" style="margin-top: 10px;">
-                    <div class="data-item"><span class="label">赛季正确数</span><span class="value" id="s-right"></span></div>
-                    <div class="data-item"><span class="label">目标达标</span><span class="value" id="s-target"></span></div>
-                </div>
+                <div class="section-title">奖励解锁状态</div>
+                <div id="award-list"></div>
             </div>
 
-            <div class="glass-card">
-                <div class="section-title">巡查奖励解锁状态</div>
-                <div class="award-list" id="award-list"></div>
-            </div>
-
-            <div class="glass-card" style="margin-bottom: 20px;"> <div class="section-title">每日巡查趋势</div>
+            <div class="glass-card" style="margin-bottom: 20px;">
+                <div class="section-title">
+                    <span>每日巡查记录</span>
+                    <button id="toggleAxis" class="btn-toggle" data-html2canvas-ignore="true">切换横向显示</button>
+                </div>
                 <div id="chartBox">
-                    <canvas id="mainChart"></canvas>
+                    <div class="chart-inner" id="chartInner">
+                        <canvas id="mainChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -166,6 +150,10 @@
 </div>
 
 <script>
+    let myChart = null;
+    let chartData = null;
+    let isHorizontal = false;
+
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
 
@@ -179,6 +167,7 @@
                 const text = event.target.result;
                 const jsonMatch = text.match(/\{.*\}/s);
                 const data = JSON.parse(jsonMatch[0]).data;
+                chartData = data.query_judge_record_summary.month_num_summary;
                 renderReport(data);
             } catch (err) { alert("解析失败"); }
         };
@@ -187,17 +176,13 @@
 
     function renderReport(data) {
         const s = data.query_user_judge_summary;
-        const awards = data.query_title_award.record_list;
-
         document.getElementById('dropZone').style.display = 'none';
         document.getElementById('t-level').innerText = s.title_level;
         document.getElementById('t-id').innerText = s.title_level_id;
         document.getElementById('exp-val').innerText = `Lv.${s.exp_level}`;
-        document.getElementById('exp-title').innerText = `当前巡查等级 (Lv.${s.exp_level})`;
-        
         const prog = parseFloat(s.exp_process);
         document.getElementById('exp-bar').style.width = prog + '%';
-        document.getElementById('exp-diff').innerText = `等级进度 ${prog}%，距离下一级还差 ${(100-prog).toFixed(2)}%`;
+        document.getElementById('exp-diff').innerText = `进度 ${prog}%，还差 ${(100-prog).toFixed(2)}%`;
 
         document.getElementById('d-total').innerText = s.life_total_case_num;
         document.getElementById('d-acc').innerText = s.recent_accuracy;
@@ -206,33 +191,50 @@
         document.getElementById('d-m-acc').innerText = s.month_accuracy;
         document.getElementById('d-rank').innerText = s.month_rank_desc;
 
-        const sTask = s.season_credit_task_progress.split('_');
-        document.getElementById('s-task-label').innerText = `积分任务 (${sTask[0]}/${sTask[1]})`;
-        document.getElementById('s-task-bar').style.width = (parseInt(sTask[0]) / parseInt(sTask[1]) * 100) + '%';
-        document.getElementById('s-right').innerText = s.season_right_case_num;
-        document.getElementById('s-target').innerText = s.target_title_finish_num >= s.target_title_require_num ? "已达标" : "未达标";
-
-        const awardHtml = awards.map(a => `
+        const awards = data.query_title_award.record_list;
+        document.getElementById('award-list').innerHTML = awards.map(a => `
             <div class="award-row">
-                <span style="font-size:15px">${a.title_level_name}</span>
+                <span style="font-size:14px">${a.title_level_name}</span>
                 <span class="status-tag ${a.status === 1 ? 'status-unlocked' : 'status-locked'}">
                     ${a.status === 1 ? '● 已解锁' : '○ 未解锁'}
                 </span>
             </div>
         `).join('');
-        document.getElementById('award-list').innerHTML = awardHtml;
 
         document.getElementById('reportContent').style.display = 'block';
         document.getElementById('exportControls').style.display = 'block';
-        initChart(data.query_judge_record_summary.month_num_summary);
+        
+        updateChart();
     }
 
-    function initChart(historyData) {
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        const labels = Object.keys(historyData).sort();
-        const vals = labels.map(l => historyData[l]);
+    document.getElementById('toggleAxis').onclick = () => {
+        isHorizontal = !isHorizontal;
+        document.getElementById('toggleAxis').innerText = isHorizontal ? "切换纵向显示" : "切换横向显示";
+        updateChart();
+    };
 
-        new Chart(ctx, {
+    function updateChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const labels = Object.keys(chartData).sort();
+        const vals = labels.map(l => chartData[l]);
+        const inner = document.getElementById('chartInner');
+        const box = document.getElementById('chartBox');
+
+        if (myChart) myChart.destroy();
+
+        if (isHorizontal) {
+            inner.style.width = '100%';
+            inner.style.height = (labels.length * 35) + 'px';
+            box.style.height = 'auto';
+        } else {
+            // 纵向模式：加大宽度比例，确保日期有旋转空间
+            const minWidth = labels.length * 45; 
+            inner.style.width = Math.max(box.offsetWidth, minWidth) + 'px';
+            inner.style.height = '280px';
+            box.style.height = '280px';
+        }
+
+        myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels.map(l => l.substring(5)),
@@ -241,17 +243,29 @@
                     data: vals,
                     backgroundColor: '#007AFF',
                     borderRadius: 4,
-                    barThickness: 12
+                    barPercentage: 0.7
                 }]
             },
             options: {
+                indexAxis: isHorizontal ? 'y' : 'x',
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 0 },
+                animation: { duration: 200 },
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: { grid: { display: false }, ticks: { color: '#8E8E93', font: { size: 10 } } },
-                    x: { grid: { display: false }, ticks: { color: '#8E8E93', font: { size: 10 } } }
+                    x: { 
+                        grid: { display: !isHorizontal }, 
+                        ticks: { 
+                            font: { size: 10 },
+                            autoSkip: false,      // 强制不跳过日期
+                            maxRotation: 45,      // 强制倾斜显示日期，解决遮挡问题
+                            minRotation: 45
+                        } 
+                    },
+                    y: { 
+                        grid: { display: isHorizontal }, 
+                        ticks: { font: { size: 10 } } 
+                    }
                 }
             }
         });
@@ -260,31 +274,29 @@
     async function exportAsImage() {
         const target = document.getElementById('captureTarget');
         const btn = document.querySelector('.download-btn');
-        btn.innerText = "正在生成长图...";
+        const originalText = btn.innerText;
+        btn.innerText = "正在渲染长图...";
         
         try {
-            // 滚动到顶部以确保截图完整
             window.scrollTo(0,0);
-            
             const canvas = await html2canvas(target, {
-                backgroundColor: '#F2F2F7', 
-                scale: 2, 
+                backgroundColor: '#F2F2F7',
+                scale: 2,
                 useCORS: true,
-                logging: false,
-                width: target.offsetWidth,
-                height: target.offsetHeight
+                width: target.scrollWidth,
+                height: target.scrollHeight,
+                windowWidth: target.scrollWidth,
+                windowHeight: target.scrollHeight
             });
             
             const link = document.createElement('a');
-            const d = new Date();
-            const fmtDate = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
-            link.download = `巡查报告_${fmtDate}.png`;
+            link.download = `巡查报告_${new Date().getTime()}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
-            btn.innerText = "保存全图报告";
         } catch (err) {
-            alert("生成失败，请稍后再试");
-            btn.innerText = "保存全图报告";
+            alert("保存失败");
+        } finally {
+            btn.innerText = originalText;
         }
     }
 </script>
