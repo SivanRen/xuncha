@@ -16,7 +16,7 @@
 (function(){
   try{
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    var V = '20261110h';
+    var V = '20261110i';
     var u = new URL(location.href);
     if (u.searchParams.get('v') !== V){
       u.searchParams.set('v', V);
@@ -59,6 +59,12 @@
     overflow:hidden}
   .avatar img{height:100%;width:auto;display:block}
   .avatar.has-img{width:auto;background:none;border-radius:0;overflow:visible}
+  .avatar img[hidden]{display:none}
+  .avatar.has-img img{animation:medalIn .18s ease-out both}
+  @keyframes medalIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+  /* 勋章预载容器：必须真实渲染（display:none 不会触发下载），故移出视口 */
+  #medalPreload{position:fixed;left:-9999px;top:0;width:1px;height:1px;
+    overflow:hidden;opacity:0;pointer-events:none}
   .hero-name{font-size:19px;font-weight:700;line-height:1.3}
   .hero-sub{font-size:12.5px;color:var(--gray);margin-top:2px}
   .chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;
@@ -165,6 +171,16 @@
 </style>
 </head>
 <body>
+<div id="medalPreload" aria-hidden="true">
+  <img src="vendor/medal/medal1.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/medal2.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/medal3.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/medal4.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/medal5.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/medal6.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/xcjp.png" alt="" width="1" height="1" decoding="async">
+  <img src="vendor/medal/xcsx.png" alt="" width="1" height="1" decoding="async">
+</div>
 <div class="page">
   <header class="hd">
     <h1>巡查数据报告</h1>
@@ -308,6 +324,7 @@ const accColor = v => v == null ? 'inherit' : (v >= 80 ? C.green : v >= 60 ? C.o
 let polling = false;
 
 async function boot(){
+  preloadMedals();
   if (window.__DATA__) { apply(window.__DATA__); return; }
   // 本地服务版：/api/report 有数据就自动更新
   // 纯静态页：拿不到接口，安静地停在「导入数据」首页，不报错
@@ -369,6 +386,26 @@ function apply(p){
 // 有星级时优先用星级图标：5-19 星 xcjp，20 星及以上 xcsx
 // 优先读本地 vendor/medal（同源，长图不会因跨域污染 canvas），失败再回退 CDN
 const MEDAL_CDN = 'https://imgcdn.gp.qq.com/images/xuncha/';
+const MEDAL_LIST = ['medal1','medal2','medal3','medal4','medal5','medal6','xcjp','xcsx'];
+const MEDAL_READY = Object.create(null);   // name -> 已就绪的 url
+
+/* 进页面就把所有可能用到的勋章灌进缓存并完成解码，
+   这样导入数据后切图是同步的，不会出现空白或闪烁。 */
+function preloadMedals(){
+  MEDAL_LIST.forEach(name => {
+    const url = 'vendor/medal/' + name + '.png';
+    const im = new Image();
+    im.decoding = 'async';
+    const ready = () => {
+      MEDAL_READY[name] = url;
+      // decode() 完成后再进缓存，切图时无需再解码
+      if (im.decode) { im.decode().then(() => { MEDAL_READY[name] = url; }).catch(() => {}); }
+    };
+    im.onload = ready;
+    im.onerror = () => { delete MEDAL_READY[name]; };
+    im.src = url;
+  });
+}
 
 function medalName(s){
   const star = int(s.expert_level_star);
@@ -420,7 +457,11 @@ function setAvatar(s){
     }
   };
   img.dataset.cdn = '';
-  img.src = 'vendor/medal/' + name + '.png';
+  const url = 'vendor/medal/' + name + '.png';
+  img.onload = show;
+  img.src = url;
+  // 预载命中（已下载并解码）时同步显示，省掉一次 load 等待，杜绝空白
+  if (MEDAL_READY[name] || (img.complete && img.naturalWidth)) show();
 }
 
 function renderHero(s){
