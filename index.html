@@ -1,309 +1,1038 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>巡查专家报告</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <style>
-        :root {
-            --ios-blue: #007AFF;
-            --ios-green: #34C759;
-            --ios-orange: #FF9500;
-            --ios-red: #FF3B30;
-            --ios-gray: #8E8E93;
-            --ios-card: rgba(255, 255, 255, 0.8);
-            --ios-bg: #F2F2F7;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>巡查数据报告</title>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script>window.__DATA__ = null;</script>
+<script>
+/* 抗缓存：URL 上没有版本号时补一个再重载，防止看到旧页面
+   （只在 http(s) 下做，离线单文件不跳转） */
+(function(){
+  try{
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+    var V = '20261110h';
+    var u = new URL(location.href);
+    if (u.searchParams.get('v') !== V){
+      u.searchParams.set('v', V);
+      location.replace(u.toString());
+    }
+  }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --blue:#007AFF; --green:#34C759; --orange:#FF9500; --red:#FF3B30;
+    --gray:#8E8E93; --ink:#1C1C1E; --ink2:#3A3A3C;
+    --bg:#F2F2F7; --card:rgba(255,255,255,.86); --line:rgba(60,60,67,.10);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;display:flex;justify-content:center}
+  .page{width:100%;max-width:700px;padding:32px 18px 120px}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  header.hd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px}
+  h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.5px}
+  .hd .meta{font-size:12px;color:var(--gray);text-align:right;line-height:1.5}
+  .live{display:inline-flex;align-items:center;gap:5px}
+  .live i{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+  .live.off i{background:#C7C7CC}
 
-        body {
-            font-family: -apple-system, system-ui, sans-serif;
-            background-color: var(--ios-bg);
-            color: #1C1C1E;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-        }
+  .card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.6);border-radius:var(--radius);padding:18px 20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .s-title{font-size:12px;color:var(--gray);letter-spacing:.6px;font-weight:600;margin-bottom:12px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px}
 
-        .screenshot-wrapper {
-            padding: 40px 20px;
-            width: 100%;
-            max-width: 650px;
-            box-sizing: border-box;
-            background-color: var(--ios-bg);
-        }
+  .hero{display:flex;flex-direction:column;gap:14px}
+  .hero-top{display:flex;align-items:center;gap:14px}
+  .avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#007AFF,#5AC8FA);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;flex:none;
+    overflow:hidden}
+  .avatar img{height:100%;width:auto;display:block}
+  .avatar.has-img{width:auto;background:none;border-radius:0;overflow:visible}
+  .hero-name{font-size:19px;font-weight:700;line-height:1.3}
+  .hero-sub{font-size:12.5px;color:var(--gray);margin-top:2px}
+  .chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;
+    padding:2px 8px;border-radius:9px;background:rgba(0,122,255,.10);color:var(--blue)}
+  .chip.gold{background:rgba(255,149,0,.13);color:#B26A00}
+  .bar{height:7px;background:rgba(60,60,67,.08);border-radius:4px;overflow:hidden;margin-top:8px}
+  .bar > i{display:block;height:100%;border-radius:4px;background:var(--blue);transition:width .6s ease}
+  .bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--gray);margin-top:6px}
 
-        .container { width: 100%; display: flex; flex-direction: column; gap: 16px; }
-        
-        .glass-card {
-            background: var(--ios-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 18px;
-            padding: 20px;
-            border: 1px solid rgba(255,255,255,0.4);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .kpi{background:rgba(120,120,128,.06);border-radius:12px;padding:10px 12px}
+  .kpi .lb{font-size:11.5px;color:var(--gray)}
+  .kpi .vl{font-size:17px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .kpi .vl.sm{font-size:15px}
 
-        .section-title { font-size: 13px; color: var(--ios-gray); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    padding:9px 0;border-bottom:.5px solid rgba(60,60,67,.08);font-size:13.5px}
+  .grid2 .row:nth-last-child(-n+2){border-bottom:0}
+  .row .k{color:var(--ink2)}
+  .row .v{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .row .v small{font-weight:400;color:var(--gray);font-size:11.5px;margin-left:3px}
 
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .data-item { border-bottom: 0.5px solid rgba(0,0,0,0.05); padding: 8px 0; }
-        .data-item:last-child { border: none; }
-        .label { font-size: 14px; color: #3A3A3C; }
-        .value { font-size: 16px; font-weight: 600; float: right; }
-        .sub-value { font-size: 12px; color: var(--ios-gray); display: block; margin-top: 4px; }
+  /* 日历 */
+  .cal-nav{display:flex;align-items:center;gap:6px}
+  .cal-nav button{border:none;background:rgba(120,120,128,.10);color:var(--ink2);
+    width:26px;height:26px;border-radius:9px;font-size:13px;cursor:pointer;line-height:1}
+  .cal-nav button:disabled{opacity:.3;cursor:default}
+  .cal-nav .mon{font-size:12.5px;font-weight:600;min-width:82px;text-align:center;color:var(--ink)}
+  .cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-week{margin-bottom:6px}
+  .cal-week span{text-align:center;font-size:11px;color:var(--gray)}
+  .cell{aspect-ratio:1/1;border-radius:11px;background:rgba(120,120,128,.07);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:12px;color:#B0B0B6;position:relative;overflow:hidden}
+  .cell .d{font-weight:600;line-height:1}
+  .cell .n{font-size:10px;opacity:.85;margin-top:3px;line-height:1}
+  .cell.blank{background:transparent}
+  .cell.done{background:rgba(0,122,255,.82);color:#fff}
+  .cell.part{background:rgba(0,122,255,.18);color:#0055B3}
+  .cell.zero{background:rgba(255,149,0,.14);color:#B26A00}
+  .cell.zero .n{opacity:.6}
+  .cell.miss{background:rgba(120,120,128,.05);color:#C7C7CC}
+  .cell.today{box-shadow:0 0 0 2px var(--blue) inset}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--gray);margin-top:12px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .cal-sum{display:flex;justify-content:space-between;gap:8px;margin-top:12px;
+    padding-top:12px;border-top:.5px solid rgba(60,60,67,.08);font-size:12px;color:var(--gray)}
+  .cal-sum b{display:block;font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
 
-        .progress-container { width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; margin-top: 8px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--ios-blue); border-radius: 3px; transition: width 0.6s ease; }
+  .chart-wrap{position:relative;height:250px}
+  .chart-wrap.tall{height:220px}
+  .note{font-size:11.5px;color:var(--gray);line-height:1.7;margin:10px 0 0}
 
-        .upload-area { border: 2px dashed var(--ios-blue); text-align: center; cursor: pointer; color: var(--ios-blue); padding: 30px; }
-        
-        .award-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 0.5px solid rgba(0,0,0,0.05); }
-        .award-row:last-child { border: none; }
-        .status-tag { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
-        .status-unlocked { background: rgba(52, 199, 89, 0.15); color: var(--ios-green); }
-        .status-locked { background: rgba(142, 142, 147, 0.15); color: var(--ios-gray); }
+  .awards .row .v{font-weight:500}
+  .tag{font-size:11px;padding:2px 8px;border-radius:9px;font-weight:600}
+  .tag.on{background:rgba(52,199,89,.14);color:#248A3D}
+  .tag.off{background:rgba(142,142,147,.14);color:var(--gray)}
+  .cond{font-size:11px;color:var(--gray);font-weight:400;margin-left:6px}
 
-        #chartBox { width: 100%; margin-top: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .chart-inner { min-width: 100%; transition: height 0.3s; }
+  .insights{display:flex;flex-direction:column;gap:10px}
+  .ins{display:flex;gap:9px;font-size:13px;line-height:1.65;color:var(--ink2)}
+  .ins i{width:6px;height:6px;border-radius:50%;background:var(--blue);flex:none;margin-top:8px}
+  .ins.warn i{background:var(--orange)}
+  .ins.good i{background:var(--green)}
+  .ins.bad i{background:var(--red)}
 
-        .btn-toggle {
-            background: rgba(0, 122, 255, 0.1);
-            color: var(--ios-blue);
-            border: none;
-            padding: 4px 12px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+  .empty{text-align:center;padding:44px 24px;color:var(--gray)}
+  .empty h2{font-size:16px;color:var(--ink);font-weight:600;margin:0 0 8px}
 
-        .controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100; display: none; }
-        .download-btn {
-            background: rgba(0, 122, 255, 0.95);
-            color: white; border: none; padding: 14px 28px; border-radius: 30px;
-            font-size: 16px; font-weight: 600; box-shadow: 0 8px 20px rgba(0,122,255,0.3);
-            cursor: pointer; backdrop-filter: blur(10px);
-        }
-    </style>
+  /* 首页：上传入口 */
+  .up{text-align:center;padding:40px 24px 30px}
+  .up-ico{width:56px;height:56px;border-radius:18px;margin:0 auto 16px;
+    background:linear-gradient(135deg,#007AFF,#5AC8FA);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 22px rgba(0,122,255,.30)}
+  .up-ico svg{width:26px;height:26px}
+  .up h2{font-size:19px;font-weight:700;color:var(--ink);margin:0 0 8px;letter-spacing:-.2px}
+  .up p{font-size:13.5px;color:var(--gray);margin:0 auto;line-height:1.65;max-width:420px}
+  .drop{margin-top:20px;border:2px dashed rgba(0,122,255,.45);border-radius:16px;padding:24px 18px;
+    color:var(--blue);cursor:pointer;font-size:13px;background:rgba(0,122,255,.04);
+    display:flex;flex-direction:column;gap:6px;align-items:center;
+    transition:background .18s ease, border-color .18s ease, transform .18s ease}
+  .drop b{font-size:15px;font-weight:700}
+  .drop span{font-size:12px;color:var(--gray)}
+  .drop:hover,.drop.over{background:rgba(0,122,255,.10);border-color:var(--blue);transform:translateY(-1px)}
+  .up-tip{margin-top:14px;font-size:11.5px;color:#B0B0B6;line-height:1.6}
+  .up-err{margin-top:14px;font-size:12.5px;color:var(--red);line-height:1.6;
+    text-align:left;white-space:pre-line;background:rgba(255,59,48,.07);
+    border-radius:12px;padding:12px 14px}
+  .foot{display:flex;justify-content:center;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .btn{border:none;border-radius:22px;padding:11px 20px;font-size:13.5px;font-weight:600;cursor:pointer;
+    font-family:inherit}
+  .btn.primary{background:var(--blue);color:#fff;box-shadow:0 6px 16px rgba(0,122,255,.28)}
+  .btn.ghost{background:rgba(120,120,128,.12);color:var(--ink2)}
+  .btn[disabled]{opacity:.55;cursor:default}
+  .src{font-size:11px;color:#B0B0B6;text-align:center;margin-top:14px}
+  @media (max-width:420px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .grid2{grid-template-columns:1fr}
+    .grid2 .row:nth-last-child(-n+2){border-bottom:.5px solid rgba(60,60,67,.08)}
+  }
+</style>
 </head>
 <body>
-
-<div class="screenshot-wrapper" id="captureTarget">
-    <div class="container">
-        <h1 style="font-weight: 800; margin-bottom: 4px; padding-left: 5px;">巡查专家报告</h1>
-        
-        <div class="glass-card upload-area" id="dropZone">
-            <p>点击或拖拽上传数据文件 (.txt/.json)</p>
-            <input type="file" id="fileInput" hidden accept=".txt,.json">
-        </div>
-
-        <div id="reportContent" style="display: none;">
-            <div class="glass-card">
-                <div class="section-title">核心数据</div>
-                <div class="data-grid">
-                    <div class="data-item"><span class="label">当前头衔</span><span class="value" id="t-level"></span></div>
-                    <div class="data-item"><span class="label">巡查段位</span><span class="value" id="t-star"></span></div>
-                    <div class="data-item"><span class="label">头衔 ID</span><span class="value" id="t-id"></span></div>
-                </div>
-                <div class="data-item" style="border:none">
-                    <span class="label" id="exp-title">当前巡查等级</span><span class="value" id="exp-val"></span>
-                    <div class="progress-container"><div class="progress-fill" id="exp-bar"></div></div>
-                    <span class="sub-value" id="exp-diff"></span>
-                </div>
-            </div>
-
-            <div class="glass-card">
-                <div class="section-title">巡查统计</div>
-                <div class="data-grid">
-                    <div class="data-item"><span class="label">总巡查正确数</span><span class="value" id="d-total"></span></div>
-                    <div class="data-item"><span class="label">近期准确率</span><span class="value" id="d-acc"></span></div>
-                    <div class="data-item"><span class="label">视频巡查数</span><span class="value" id="d-right"></span></div>
-                    <div class="data-item"><span class="label">查封数</span><span class="value" id="d-wrong" style="color: #1C1C1E;"></span></div>
-                    
-                    <div class="data-item"><span class="label">行为巡查数</span><span class="value" id="d-behave"></span></div>
-                    <div class="data-item"><span class="label">猎鹰巡查查封数</span><span class="value" id="d-falcon"></span></div>
-                    
-                    <div class="data-item"><span class="label">月度准确率</span><span class="value" id="d-m-acc"></span></div>
-                    <div class="data-item"><span class="label">月度排名</span><span class="value" id="d-rank"></span></div>
-                    <div class="data-item"><span class="label">本月巡查数</span><span class="value" id="d-m-total"></span></div>
-                </div>
-            </div>
-
-            <div class="glass-card">
-                <div class="section-title">奖励解锁状态</div>
-                <div id="award-list"></div>
-            </div>
-
-            <div class="glass-card" style="margin-bottom: 20px;">
-                <div class="section-title">
-                    <span>每日巡查趋势</span>
-                    <button id="toggleAxis" class="btn-toggle" data-html2canvas-ignore="true">切换横向显示</button>
-                </div>
-                <div id="chartBox">
-                    <div class="chart-inner" id="chartInner">
-                        <canvas id="mainChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="page">
+  <header class="hd">
+    <h1>巡查数据报告</h1>
+    <div class="meta">
+      <div class="live off" id="live"><i></i><span id="liveText">待导入</span></div>
+      <div id="stamp"></div>
     </div>
+  </header>
+
+  <div class="stack">
+    <div class="card up" id="emptyBox">
+      <div class="up-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+        </svg>
+      </div>
+      <h2>导入巡查数据</h2>
+      <p>把 HTTP Catcher 里保存的响应文件拖进来，或者点下面选择文件。</p>
+      <div class="drop" id="dropZone" role="button" tabindex="0">
+        <b>选择文件</b>
+        <span>支持 .txt / .json · 可一次选多份</span>
+      </div>
+      <div class="up-tip">文件只在这个浏览器里解析，不会上传到任何服务器。</div>
+      <div class="up-err" id="upErr" hidden></div>
+    </div>
+
+    <div class="stack" id="report" hidden>
+      <div class="card hero">
+        <div class="hero-top">
+          <div class="avatar" id="avatar"><img id="avatarImg" alt="" hidden><span id="avatarTxt">巡</span></div>
+          <div style="flex:1">
+            <div class="hero-name" id="hName">—</div>
+            <div class="hero-sub" id="hSub">—</div>
+          </div>
+          <div class="chip gold" id="hStar">—</div>
+        </div>
+        <div>
+          <div class="bar-row"><span id="expLabel">巡查等级</span><span id="expPct">—</span></div>
+          <div class="bar"><i id="expBar" style="width:0%"></i></div>
+          <div class="bar-row"><span id="expDiff"></span><span id="hId"></span></div>
+        </div>
+      </div>
+
+      <div class="card" id="statsCard">
+        <div class="s-title"><span>巡查数据构成</span><span id="statsTotal"></span></div>
+        <div class="grid2" id="statsRows"></div>
+      </div>
+
+      <div class="card">
+        <div class="s-title"><span>巡查构成</span><span id="compTotal"></span></div>
+        <div class="chart-wrap tall"><canvas id="compChart"></canvas></div>
+        <p class="note">「总巡查正确数」是按 猎鹰×5 + 行为 + 视频 换算的加权值，与原始页面口径一致。</p>
+      </div>
+
+      <div class="card" id="accCard">
+        <div class="s-title"><span>准确率走势</span><span id="accCount"></span></div>
+        <div class="chart-wrap tall"><canvas id="accChart"></canvas></div>
+        <p class="note" id="accNote"></p>
+      </div>
+
+      <div class="card">
+        <div class="s-title"><span>赛季挑战</span><span id="seasonRight"></span></div>
+        <div class="bar-row"><span id="seasonLabel"></span><span id="seasonPct"></span></div>
+        <div class="bar"><i id="seasonBar" style="width:0%"></i></div>
+        <div class="grid2" id="seasonRows" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <div class="s-title"><span>头衔解锁</span><span id="awardCount"></span></div>
+        <div class="awards" id="awardList"></div>
+      </div>
+
+      <div class="card">
+        <div class="s-title"><span>分析结论</span></div>
+        <div class="insights" id="insights"></div>
+      </div>
+
+      <div class="card">
+        <div class="s-title">
+          <span>每日巡查日历</span>
+          <div class="cal-nav">
+            <button id="prevM" title="上一月">‹</button>
+            <span class="mon" id="monLabel">—</span>
+            <button id="nextM" title="下一月">›</button>
+          </div>
+        </div>
+        <div class="cal-week">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="legend">
+          <span><i style="background:rgba(0,122,255,.82)"></i>达标</span>
+          <span><i style="background:rgba(0,122,255,.18)"></i>部分完成</span>
+          <span><i style="background:rgba(255,149,0,.14)"></i>当日未巡查</span>
+          <span><i style="background:rgba(120,120,128,.07)"></i>无数据</span>
+        </div>
+        <div class="cal-sum" id="calSum"></div>
+      </div>
+
+      <div class="card">
+        <div class="s-title">
+          <span>每日巡查趋势</span>
+          <button class="chip" id="toggleAxis" data-html2canvas-ignore="true"
+                  style="border:none;cursor:pointer">切换横向</button>
+        </div>
+        <div class="chart-wrap" id="dailyWrap"><canvas id="dailyChart"></canvas></div>
+      </div>
+
+
+      <div class="foot" data-html2canvas-ignore="true">
+        <button class="btn primary" id="btnImg">保存长图</button>
+        <button class="btn ghost" id="btnHtml">导出单文件报告</button>
+        <button class="btn ghost" id="btnImport">手动导入</button>
+      </div>
+      <div class="src" id="srcNote"></div>
+    </div>
+  </div>
 </div>
 
-<div class="controls" id="exportControls">
-    <button class="download-btn" onclick="exportAsImage()">保存全图报告</button>
-</div>
+<!-- 必须放在所有 hidden 容器外面：祖先 display:none 时 input.click() 会被浏览器忽略 -->
+<input type="file" id="fileInput" accept=".txt,.json,text/plain,application/json" multiple
+       style="position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;z-index:-1">
 
 <script>
-    let myChart = null;
-    let chartData = null;
-    let isHorizontal = false;
+"use strict";
+const $ = id => document.getElementById(id);
+const C = { blue:'#007AFF', green:'#34C759', orange:'#FF9500', red:'#FF3B30', gray:'#8E8E93' };
 
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropZone');
+let payload = null, calMonth = null, dailyChart = null, compChart = null, accChart = null, horizontal = false;
 
-    dropZone.onclick = () => fileInput.click();
-    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+/* ---------------------------------------------------------------- 工具 */
+const int = v => { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; };
+const pctf = v => { const m = String(v == null ? '' : v).match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; };
+const fmtInt = n => Number(n || 0).toLocaleString('zh-CN');
+const pad = n => String(n).padStart(2, '0');
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); };
+const accColor = v => v == null ? 'inherit' : (v >= 80 ? C.green : v >= 60 ? C.orange : C.red);
 
-    function handleFile(file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            try {
-                const text = event.target.result;
-                const jsonMatch = text.match(/\{.*\}/s);
-                const data = JSON.parse(jsonMatch[0]).data;
-                chartData = data.query_judge_record_summary.month_num_summary;
-                renderReport(data);
-            } catch (err) { alert("解析失败"); }
-        };
-        reader.readAsText(file);
+/* ---------------------------------------------------------------- 数据入口 */
+let polling = false;
+
+async function boot(){
+  if (window.__DATA__) { apply(window.__DATA__); return; }
+  // 本地服务版：/api/report 有数据就自动更新
+  // 纯静态页：拿不到接口，安静地停在「导入数据」首页，不报错
+  const ok = await refresh();
+  if (ok && !polling){ polling = true; setInterval(refresh, 5000); }
+}
+
+async function refresh(){
+  try{
+    const r = await fetch('api/report', { cache:'no-store' });
+    if (!r.ok) return false;
+    let p;
+    try { p = JSON.parse(await r.text()); }
+    catch(_) { return false; }          // 静态站点会把 index.html 当 404 回，直接放弃
+    if (!p || !p.latest) return false;
+    p._origin = 'server';
+    apply(p);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function apply(p){
+  payload = p;
+  const origin = p._origin || (window.__DATA__ ? 'inline' : 'server');
+  const isServer = origin === 'server';
+  $('live').className = 'live' + (isServer ? '' : ' off');
+  $('liveText').textContent = isServer ? '自动更新中' : '本地数据';
+  $('stamp').textContent = p.latest ? ('数据时间 ' + p.latest.ts) : '';
+  const has = p.latest && p.latest.data && p.latest.data.query_user_judge_summary;
+  $('emptyBox').hidden = !!has;
+  $('report').hidden = !has;
+  if (!has) return;
+
+  const d = p.latest.data;
+  if (!calMonth) {
+    const ms = p.months || [];
+    calMonth = ms.length ? ms[ms.length - 1] : todayStr().slice(0, 7);
+  }
+  renderHero(d.query_user_judge_summary || {});
+  renderStats(d.query_user_judge_summary || {}, p);
+  renderCalendar(p.calendar || {}, p.day_permit || 0);
+  renderDaily(p.calendar || {}, p.day_permit || 0);
+  renderComp(d.query_user_judge_summary || {});
+  renderAcc(p.series || []);
+  renderSeason(d.query_season_challenge || {}, d.query_user_judge_summary || {});
+  renderAwards(d.query_title_award || {});
+  renderInsights(d, p);
+  $('srcNote').textContent = isServer
+    ? '已记录 ' + p.counts.snapshots + ' 次抓取 · 覆盖 ' + p.counts.calendar_days + ' 天数据'
+    : '本地解析 · ' + p.counts.snapshots + ' 份文件 · 覆盖 ' + p.counts.calendar_days + ' 天数据';
+}
+
+/* ---------------------------------------------------------------- 头部 */
+/* ---------------------------------------------------------------- 头衔图标 */
+//
+// 巡查等级对应勋章：实习1 助理2 初级3 中级4 高级4 专家5
+// 有星级时优先用星级图标：5-19 星 xcjp，20 星及以上 xcsx
+// 优先读本地 vendor/medal（同源，长图不会因跨域污染 canvas），失败再回退 CDN
+const MEDAL_CDN = 'https://imgcdn.gp.qq.com/images/xuncha/';
+
+function medalName(s){
+  const star = int(s.expert_level_star);
+  if (star >= 20) return 'xcsx';
+  if (star >= 5)  return 'xcjp';
+
+  const lv = String(s.title_level || '');
+  const rank = [['实习', 1], ['助理', 2], ['初级', 3], ['中级', 4], ['高级', 5], ['专家', 6]];
+  for (const [k, n] of rank){
+    if (lv.indexOf(k) >= 0) return 'medal' + n;
+  }
+  return '';
+}
+
+function setAvatar(s){
+  const box = $('avatar'), img = $('avatarImg'), txt = $('avatarTxt');
+  if (!box || !img || !txt) return;
+
+  const name = medalName(s);
+  const fallback = () => {
+    img.hidden = true;
+    txt.hidden = false;
+    box.classList.remove('has-img');
+  };
+
+  if (!name){ fallback(); return; }
+
+  const show = () => {
+    img.hidden = false;
+    txt.hidden = true;
+    box.classList.add('has-img');
+  };
+
+  // 导出的单文件报告会把勋章图内联成 dataURI 放在这里
+  if (window.__MEDAL__){
+    img.onload = show;
+    img.onerror = fallback;
+    img.src = window.__MEDAL__;
+    return;
+  }
+
+  img.onload = show;
+  img.onerror = () => {
+    if (img.dataset.cdn !== '1'){          // 本地缺失 → 试 CDN
+      img.dataset.cdn = '1';
+      img.src = MEDAL_CDN + name + '.png';
+    } else {
+      fallback();                          // 都失败 → 退回「巡」字
+    }
+  };
+  img.dataset.cdn = '';
+  img.src = 'vendor/medal/' + name + '.png';
+}
+
+function renderHero(s){
+  setAvatar(s);
+  $('hName').textContent = s.title_level || '未知头衔';
+  $('hSub').textContent = '头衔 ID ' + (s.title_level_id || '—') + ' · 巡查等级 Lv.' + (s.exp_level || '—');
+  $('hStar').textContent = (s.expert_level_star || 0) + ' 星';
+  const p = pctf(s.exp_process) || 0;
+  $('expPct').textContent = p.toFixed(2) + '%';
+  $('expBar').style.width = Math.min(100, p) + '%';
+  $('expDiff').textContent = '到下一级还差 ' + (100 - p).toFixed(2) + '%';
+  $('hId').textContent = '等级进度 ' + p.toFixed(2) + '%';
+}
+
+function renderStats(s, p){
+  const video  = int(s.life_right_case_num);                        // 视频巡查
+  const behave = int(s.behaviour_life_right_punish_case_num);       // 行为巡查
+  const falcon = int(s.life_real_time_right_punish_case_num);       // 猎鹰巡查查封
+  const wrong  = int(s.life_right_punish_case_num);                 // 查封
+  const custom = falcon * 5 + behave + video;                       // 加权总巡查正确数
+
+  const acc  = pctf(s.recent_accuracy);
+  const macc = pctf(s.month_accuracy);
+
+  const month = (p.months || []).slice(-1)[0] || '';
+  const monthTotal = Object.keys(p.calendar || {})
+    .filter(k => k.startsWith(month))
+    .reduce((a, k) => a + int(p.calendar[k]), 0);
+
+  const dJudged = int(s.day_judged_num);
+  const dTotal  = int(s.day_total_judged_num) || int(s.day_permit_num) || 20;
+
+  $('statsTotal').textContent = '合计 ' + fmtInt(video + behave + falcon) + ' 次';
+
+  $('statsRows').innerHTML = [
+    srow('总巡查正确数', fmtInt(custom), '加权'),
+    srow('近期准确率', s.recent_accuracy || '—', '近 20 次', accColor(acc)),
+    srow('视频巡查数', fmtInt(video)),
+    srow('查封数', fmtInt(wrong)),
+    srow('行为巡查数', fmtInt(behave)),
+    srow('猎鹰巡查查封数', fmtInt(falcon)),
+    srow('月度准确率', s.month_accuracy || '—', '当月均值', accColor(macc)),
+    srow('月度排名', s.month_rank_desc || '—'),
+    srow('本月巡查数', fmtInt(monthTotal), '当月累计'),
+    srow('今日巡查', dJudged + ' / ' + dTotal, '已完成'),
+  ].join('');
+}
+
+function srow(label, value, sub, color){
+  return '<div class="row">'
+    + '<span class="lb" style="color:var(--gray)">' + label
+    + (sub ? ' <em style="font-style:normal;font-size:10.5px;color:#B0B0B6">' + sub + '</em>' : '')
+    + '</span>'
+    + '<span class="vl" style="font-weight:600;font-variant-numeric:tabular-nums'
+    + (color ? ';color:' + color : '') + '">' + value + '</span>'
+    + '</div>';
+}
+
+/* ---------------------------------------------------------------- 日历 */
+function renderCalendar(cal, permit){
+  const months = (payload && payload.months) || [];
+  const idx = months.indexOf(calMonth);
+  $('prevM').disabled = idx <= 0 && !months.length ? true : (idx > 0 ? false : !hasEarlier(calMonth, months));
+  $('nextM').disabled = idx >= months.length - 1;
+
+  const [y, m] = calMonth.split('-').map(Number);
+  $('monLabel').textContent = y + ' 年 ' + m + ' 月';
+
+  const days = new Date(y, m, 0).getDate();
+  const firstDow = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const today = todayStr();
+  const monthHasData = Object.keys(cal).some(k => k.startsWith(calMonth));
+  let html = '';
+  for (let i = 0; i < firstDow; i++) html += '<div class="cell blank"></div>';
+
+  let total = 0, done = 0, counted = 0;
+  for (let day = 1; day <= days; day++){
+    const ds = calMonth + '-' + pad(day);
+    const raw = cal[ds];
+    const future = ds > today;
+    let cls = 'cell', label = '';
+    if (raw === undefined){
+      if (future) { cls += ' miss'; label = ''; }
+      else if (monthHasData) { cls += ' zero'; label = '0'; total += 0; counted++; }
+      else { cls += ' miss'; label = ''; }
+    } else {
+      const n = int(raw);
+      total += n; counted++;
+      if (permit > 0 && n >= permit) { cls += ' done'; done++; }
+      else if (n > 0) cls += ' part';
+      else cls += ' zero';
+      label = String(n);
+    }
+    if (ds === today) cls += ' today';
+    html += `<div class="${cls}" title="${ds}${raw !== undefined ? '：' + raw + ' 次' : ''}">
+      <span class="d">${day}</span>${label !== '' ? `<span class="n">${label}</span>` : ''}</div>`;
+  }
+  $('calGrid').innerHTML = html;
+
+  const avg = counted ? (total / counted) : 0;
+  $('calSum').innerHTML = [
+    ['当月合计', fmtInt(total) + ' 次'],
+    ['达标天数', done + ' 天'],
+    ['日均', avg.toFixed(1)],
+    ['每日配额', permit ? permit + ' 次' : '—'],
+  ].map(([k, v]) => `<div><b>${v}</b>${k}</div>`).join('');
+}
+
+function hasEarlier(month, months){
+  if (!months.length) return false;
+  return month > months[0];
+}
+
+/* ---------------------------------------------------------------- 趋势图 */
+function renderDaily(cal, permit){
+  const [y, m] = calMonth.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  const labels = [], values = [];
+  for (let day = 1; day <= days; day++){
+    const ds = calMonth + '-' + pad(day);
+    labels.push(day);
+    values.push(cal[ds] === undefined ? null : int(cal[ds]));
+  }
+  const wrap = $('dailyWrap');
+  if (horizontal){
+    wrap.style.height = Math.max(240, days * 22) + 'px';
+  } else {
+    wrap.style.height = '250px';
+  }
+  if (dailyChart) dailyChart.destroy();
+  dailyChart = new Chart($('dailyChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label: '巡查数', data: values,
+      backgroundColor: values.map(v => v == null ? 'rgba(120,120,128,.15)'
+        : (permit && v >= permit ? C.blue : (v > 0 ? 'rgba(0,122,255,.45)' : 'rgba(255,149,0,.55)'))),
+      borderRadius: 4, barPercentage: .82, categoryPercentage: .9,
+    }]},
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ' ' + (c.parsed[horizontal ? 'x' : 'y'] ?? 0) + ' 次' } }
+      },
+      scales: {
+        x: { grid: { display: horizontal }, ticks: { font: { size: 10 }, autoSkip: !horizontal, maxRotation: 0 } },
+        y: { grid: { display: !horizontal }, beginAtZero: true, ticks: { font: { size: 10 }, precision: 0 } },
+      }
+    }
+  });
+}
+
+function renderComp(s){
+  const video = int(s.life_right_case_num);
+  const behave = int(s.behaviour_life_right_punish_case_num);
+  const falcon = int(s.life_real_time_right_punish_case_num);
+  $('compTotal').textContent = '合计 ' + fmtInt(video + behave + falcon) + ' 次';
+  if (compChart) compChart.destroy();
+  compChart = new Chart($('compChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['视频巡查', '行为巡查', '猎鹰查封'],
+      datasets: [{ data: [video, behave, falcon],
+        backgroundColor: [C.blue, 'rgba(0,122,255,.55)', C.orange],
+        borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 10, boxHeight: 10, font: { size: 11.5 }, color: '#3A3A3C' } },
+        tooltip: { callbacks: { label: c => ' ' + c.label + '：' + fmtInt(c.parsed) + ' 次' } }
+      }
+    }
+  });
+}
+
+function renderAcc(series){
+  const valid = series.filter(x => x.recent_accuracy != null);
+  $('accCount').textContent = valid.length > 1 ? valid.length + ' 次快照' : '单次快照';
+  const card = $('accCard');
+  const wrap = $('accChart').parentElement;
+  const enough = valid.length >= 2;
+  wrap.style.display = enough ? '' : 'none';
+  if (!enough){
+    card.style.display = '';
+    $('accNote').textContent = '这是第一次抓取，还画不出走势。之后每天打开一次巡查页面，'
+      + '这里会出现近期准确率与月度准确率的变化曲线。';
+    if (accChart) { accChart.destroy(); accChart = null; }
+    return;
+  }
+  $('accNote').textContent = '每个点是一次抓取快照。近期准确率看短期波动，月度准确率看整体趋势。';
+  if (accChart) accChart.destroy();
+  accChart = new Chart($('accChart'), {
+    type: 'line',
+    data: {
+      labels: valid.map(x => (x.ts || '').slice(5, 16)),
+      datasets: [
+        { label: '近期准确率', data: valid.map(x => x.recent_accuracy), borderColor: C.blue,
+          backgroundColor: 'rgba(0,122,255,.10)', fill: true, tension: .3, borderWidth: 2,
+          pointRadius: valid.length > 30 ? 0 : 3, pointBackgroundColor: C.blue },
+        { label: '月度准确率', data: valid.map(x => x.month_accuracy), borderColor: C.gray,
+          borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0, fill: false, tension: .3 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { labels: { boxWidth: 10, boxHeight: 10, font: { size: 11.5 }, color: '#3A3A3C' } },
+        tooltip: { callbacks: { label: c => ' ' + c.dataset.label + '：' + c.parsed.y + '%' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 6 } },
+        y: { grid: { color: 'rgba(60,60,67,.07)' }, ticks: { font: { size: 10 }, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+/* ---------------------------------------------------------------- 赛季 / 头衔 */
+function renderSeason(sc, s){
+  const right = int(sc.right_num);
+  const list = (sc.record_list || []).slice().sort((a, b) => int(a.request_right_num) - int(b.request_right_num));
+  const next = list.find(t => int(t.request_right_num) > right) || list[list.length - 1];
+  const target = next ? int(next.request_right_num) : right;
+  $('seasonRight').textContent = '正确数 ' + right;
+  $('seasonLabel').textContent = next
+    ? '下一档：累计 ' + target + ' 次正确（还差 ' + Math.max(0, target - right) + ' 次）'
+    : '已达最高档';
+  const p = target ? Math.min(100, right / target * 100) : 0;
+  $('seasonPct').textContent = p.toFixed(1) + '%';
+  $('seasonBar').style.width = p + '%';
+
+  const rows = [];
+  rows.push(['学分加成', sc.credit_bonus || '—']);
+  rows.push(['当前段位', sc.title_desc || s.title_level || '—']);
+  rows.push(['剩余任务档', list.filter(t => int(t.request_right_num) > right).length + ' 档']);
+  rows.push(['已完成档位', list.filter(t => int(t.request_right_num) <= right).length + ' 档']);
+  $('seasonRows').innerHTML = rows.map(([k, v]) =>
+    `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+}
+
+function renderAwards(aw){
+  const list = aw.record_list || [];
+  $('awardCount').textContent = list.length + ' 个头衔';
+  $('awardList').innerHTML = list.map(a => {
+    const need = int(a.request_right_num);
+    const rate = a.request_right_rate;
+    let cond = '';
+    if (need > 0) cond = '需 ' + need + ' 次正确';
+    if (rate && rate > 0) cond += (cond ? ' · ' : '') + '正确率 ' + (rate * 100).toFixed(0) + '%';
+    return `<div class="row">
+      <span class="k">${a.title_level_name || '—'}<span class="cond">${cond}</span></span>
+      <span class="tag ${a.status === 1 ? 'on' : 'off'}">${a.status === 1 ? '已解锁' : '未解锁'}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------------------------------------------------------- 结论 */
+function renderInsights(d, p){
+  const s = d.query_user_judge_summary || {};
+  const rec = d.query_judge_record_summary || {};
+  const mns = rec.month_num_summary || {};
+  const permit = int(s.day_permit_num) || 20;
+  const out = [];
+  const push = (tone, text) => out.push({ tone, text });
+
+  const dates = Object.keys(mns).sort();
+  const doneDays = dates.filter(k => int(mns[k]) >= permit).length;
+  const zeroDays = dates.filter(k => int(mns[k]) === 0);
+  const total = dates.reduce((a, k) => a + int(mns[k]), 0);
+
+  if (dates.length){
+    const rate = (doneDays / dates.length * 100).toFixed(0);
+    push(doneDays >= dates.length * 0.8 ? 'good' : 'warn',
+      `本月已记录 ${dates.length} 天，其中 ${doneDays} 天完成 ${permit} 次配额，达标率 ${rate}%，累计巡查 ${total} 次，日均 ${(total / dates.length).toFixed(1)} 次。`);
+  }
+  if (zeroDays.length){
+    push('warn', `有 ${zeroDays.length} 天巡查数为 0：${zeroDays.slice(-5).join('、')}${zeroDays.length > 5 ? ' 等' : ''}。这些天在日历上是橙色方格。`);
+  }
+
+  const streak = longestStreak(mns, permit);
+  if (streak >= 2) push('good', `最长连续达标 ${streak} 天，连续记录能稳定提升近期准确率的权重。`);
+
+  const acc = pctf(s.recent_accuracy), macc = pctf(s.month_accuracy);
+  if (acc != null && macc != null){
+    const gap = (acc - macc).toFixed(2);
+    if (acc >= macc) push('good', `近期准确率 ${s.recent_accuracy}，比月度均值 ${s.month_accuracy} 高 ${gap} 个百分点，状态在回升。`);
+    else push('bad', `近期准确率 ${s.recent_accuracy}，比月度均值 ${s.month_accuracy} 低 ${Math.abs(gap)} 个百分点，最近几单的判定偏离了自己的平均水平。`);
+  }
+  if (acc != null && acc < 80){
+    push('warn', `近期准确率低于 80%，注意高相似度的模糊对局——这类样本最容易连续判错，拖累整段平均值。`);
+  }
+
+  const exp = pctf(s.exp_process);
+  if (exp != null) push('', `巡查等级 Lv.${s.exp_level}，本级进度 ${exp.toFixed(2)}%，再涨 ${(100 - exp).toFixed(2)}% 进下一级。`);
+
+  const sc = d.query_season_challenge || {};
+  const right = int(sc.right_num);
+  const nextT = (sc.record_list || []).map(t => int(t.request_right_num))
+    .filter(n => n > right).sort((a, b) => a - b)[0];
+  if (nextT) push('', `赛季挑战当前 ${right} 次正确，距下一档 ${nextT} 次还差 ${nextT - right} 次，兑现后可得 ${int((sc.record_list || [])[0] && (sc.record_list || [])[0].credit) || 80} 学分（加成 ${sc.credit_bonus || '—'}）。`);
+
+  const wrong = int(s.life_right_punish_case_num), rightCase = int(s.life_right_case_num);
+  if (rightCase) push('', `视频巡查 ${fmtInt(rightCase)} 次、查封 ${fmtInt(wrong)} 次，查封占比 ${(wrong / rightCase * 100).toFixed(1)}%，可用来判断自己对违规样本的敏感度是否偏高。`);
+
+  $('insights').innerHTML = out.map(x => `<div class="ins ${x.tone}"><i></i><div>${x.text}</div></div>`).join('');
+}
+
+function longestStreak(mns, permit){
+  const dates = Object.keys(mns).sort();
+  let best = 0, cur = 0, prev = null;
+  for (const d of dates){
+    const ok = int(mns[d]) >= permit;
+    if (prev){
+      const diff = (new Date(d) - new Date(prev)) / 86400000;
+      if (diff !== 1) cur = 0;
+    }
+    cur = ok ? cur + 1 : 0;
+    best = Math.max(best, cur);
+    prev = d;
+  }
+  return best;
+}
+
+/* ------------------------------------------------ 导入：多段 JSON 里挑真数据 */
+//
+// 这个接口一次会下发多段内容，可能是拼接的多个 JSON、也可能被 callback(...) 包住，
+// 所以不能直接 JSON.parse。解析规则与 App 内 JSONKit.swift 保持一致。
+
+function matchEnd(s, start){
+  const open = s[start], close = (open === '{') ? '}' : ']';
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < s.length; i++){
+    const c = s[i];
+    if (inStr){
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+    } else {
+      if (c === '"') inStr = true;
+      else if (c === open) depth++;
+      else if (c === close){ depth--; if (!depth) return i; }
+    }
+  }
+  return -1;
+}
+
+function scanObjects(s){
+  const out = [];
+  let i = 0;
+  while (i < s.length){
+    const c = s[i];
+    if (c === '{' || c === '['){
+      const end = matchEnd(s, i);
+      if (end > i){
+        try { out.push(JSON.parse(s.slice(i, end + 1))); } catch(_){}
+        i = end + 1;
+        continue;
+      }
+    }
+    i++;
+  }
+  return out;
+}
+
+function candidatesFrom(text){
+  const s = String(text || '').trim();
+  if (!s) return [];
+  try { return [JSON.parse(s)]; } catch(_){}
+  const a = s.search(/[{\[]/);
+  const b = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+  if (a >= 0 && b > a){
+    try { return [JSON.parse(s.slice(a, b + 1))]; } catch(_){}
+  }
+  return scanObjects(s);
+}
+
+const NEED_KEYS = ['query_user_judge_summary', 'query_judge_record_summary', 'query_title_award'];
+
+function pickData(cands){
+  let best = null, bestScore = -1;
+  for (const c of cands){
+    if (!c || typeof c !== 'object' || Array.isArray(c)) continue;
+    const data = c.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) continue;
+    const score = NEED_KEYS.filter(k => data[k] !== undefined).length;
+    if (score > bestScore){ bestScore = score; best = data; }
+  }
+  return bestScore >= 2 ? best : null;   // 缺一个也认，防止接口改版
+}
+
+function pctOf(v){
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return v;
+  const m = String(v).match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+function buildPayload(snaps){
+  const calendar = {};
+  const months = new Set();
+  const series = [];
+
+  snaps.sort((a, b) => (a.epoch || 0) - (b.epoch || 0));
+
+  for (const snap of snaps){
+    const data = snap.data || {};
+    const rec = data.query_judge_record_summary || {};
+    const summary = data.query_user_judge_summary || {};
+    const mns = rec.month_num_summary || {};
+    let total = 0;
+    for (const day of Object.keys(mns)){
+      if (day.length !== 10) continue;
+      const c = int(mns[day]);
+      calendar[day] = c;                 // 后抓的覆盖先抓的
+      months.add(day.slice(0, 7));
+      total += c;
+    }
+    series.push({
+      ts: snap.ts || '',
+      epoch: snap.epoch || 0,
+      recent_accuracy: pctOf(summary.recent_accuracy),
+      month_accuracy: pctOf(summary.month_accuracy),
+      month_total: total,
+      exp_level: int(summary.exp_level),
+      exp_process: pctOf(summary.exp_process),
+    });
+  }
+
+  const latest = snaps.length ? snaps[snaps.length - 1] : null;
+  const permit = latest
+    ? int(((latest.data || {}).query_user_judge_summary || {}).day_permit_num)
+    : 0;
+
+  return {
+    server_time: new Date().toLocaleString('zh-CN'),
+    latest,
+    calendar,
+    months: [...months].sort(),
+    series,
+    day_permit: permit,
+    counts: { snapshots: snaps.length, calendar_days: Object.keys(calendar).length },
+    _origin: 'import',
+  };
+}
+
+function showUpErr(msg){
+  const el = $('upErr');
+  if (!el) return;
+  el.hidden = !msg;
+  el.textContent = msg || '';
+}
+
+async function importFiles(fileList){
+  const files = [...fileList];
+  if (!files.length) return;
+
+  const snaps = [];
+  const errs = [];
+
+  for (let i = 0; i < files.length; i++){
+    const f = files[i];
+    let text = '';
+    try { text = await f.text(); }
+    catch(_){ errs.push('· ' + f.name + '：读不出来'); continue; }
+
+    const data = pickData(candidatesFrom(text));
+    if (!data){ errs.push('· ' + f.name + '：没找到完整的巡查数据'); continue; }
+
+    snaps.push({
+      ts: f.name.replace(/\.[^.]+$/, ''),
+      epoch: (f.lastModified || Date.now()) + i,     // 同批文件保序
+      data,
+    });
+  }
+
+  if (!snaps.length){
+    showUpErr(errs.length ? ('没有可用的数据：\n' + errs.join('\n')) : '没读到巡查数据');
+    return;
+  }
+
+  showUpErr(errs.length ? ('已跳过 ' + errs.length + ' 个文件：\n' + errs.join('\n')) : '');
+  calMonth = null;
+  apply(buildPayload(snaps));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ---------------------------------------------------------------- 交互 */
+$('prevM').onclick = () => { shiftMonth(-1); };
+$('nextM').onclick = () => { shiftMonth(1); };
+
+function shiftMonth(delta){
+  const [y, m] = calMonth.split('-').map(Number);
+  const dt = new Date(y, m - 1 + delta, 1);
+  const next = dt.getFullYear() + '-' + pad(dt.getMonth() + 1);
+  const months = (payload && payload.months) || [];
+  if (months.length && (next < months[0] || next > months[months.length - 1])) return;
+  calMonth = next;
+  renderCalendar(payload.calendar || {}, payload.day_permit || 0);
+  renderDaily(payload.calendar || {}, payload.day_permit || 0);
+}
+
+$('toggleAxis').onclick = () => {
+  horizontal = !horizontal;
+  $('toggleAxis').textContent = horizontal ? '切换纵向' : '切换横向';
+  renderDaily(payload.calendar || {}, payload.day_permit || 0);
+};
+
+$('btnImg').onclick = async () => {
+  const btn = $('btnImg'), old = btn.textContent;
+  btn.textContent = '正在渲染…'; btn.disabled = true;
+  try{
+    window.scrollTo(0, 0);
+    const target = document.body;
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#F2F2F7', scale: 2, useCORS: true,
+      width: target.scrollWidth, height: target.scrollHeight,
+      windowWidth: target.scrollWidth, windowHeight: target.scrollHeight
+    });
+    const a = document.createElement('a');
+    a.download = '巡查报告_' + new Date().toISOString().slice(0, 10) + '.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  }catch(e){ alert('保存失败：' + e.message); }
+  finally{ btn.textContent = old; btn.disabled = false; }
+};
+
+/* 导出单文件报告：把 vendor 脚本和数据一起塞进一份 HTML，离线也能打开 */
+$('btnHtml').onclick = async () => {
+  const btn = $('btnHtml'), old = btn.textContent;
+  btn.textContent = '正在打包…'; btn.disabled = true;
+  try{
+    let src = await (await fetch(location.href, { cache: 'no-store' })).text();
+
+    for (const f of ['vendor/chart.umd.min.js', 'vendor/html2canvas.min.js']){
+      try{
+        const js = await (await fetch(f)).text();
+        const tag = '<script src="' + f + '"><\/script>';
+        if (src.includes(tag)){
+          src = src.replace(tag, '<script>' + js.replace(/<\/script/gi, '<\\/script') + '<\/script>');
+        }
+      }catch(_){}
     }
 
-    function renderReport(data) {
-        const s = data.query_user_judge_summary;
-        document.getElementById('dropZone').style.display = 'none';
-        
-        // 核心数据渲染
-        document.getElementById('t-level').innerText = s.title_level;
-        document.getElementById('t-star').innerText = s.expert_level_star + " 星";
-        document.getElementById('t-id').innerText = s.title_level_id;
-        document.getElementById('exp-val').innerText = `Lv.${s.exp_level}`;
-        const prog = parseFloat(s.exp_process);
-        document.getElementById('exp-bar').style.width = prog + '%';
-        document.getElementById('exp-diff').innerText = `进度 ${prog}%，还差 ${(100-prog).toFixed(2)}%`;
-
-        // --- 逻辑调整：直接读取各字段 ---
-        const falconNum = parseInt(s.life_real_time_right_punish_case_num) || 0;
-        const behaveNum = parseInt(s.behaviour_life_right_punish_case_num) || 0;
-        const videoNum = parseInt(s.life_right_case_num) || 0; // 视频巡查直接对应这个字段
-        
-        // 计算加权总和
-        const customTotal = (falconNum * 5) + behaveNum + videoNum;
-        document.getElementById('d-total').innerText = customTotal;
-
-        // 渲染基础数值
-        document.getElementById('d-right').innerText = videoNum; // 视频巡查
-        document.getElementById('d-behave').innerText = behaveNum; // 行为
-        document.getElementById('d-falcon').innerText = falconNum; // 猎鹰
-        document.getElementById('d-wrong').innerText = s.life_right_punish_case_num; // 查封数
-
-        // 准确率配色
-        const accElement = document.getElementById('d-acc');
-        const accValue = parseFloat(s.recent_accuracy);
-        accElement.innerText = s.recent_accuracy;
-        if (accValue >= 80) {
-            accElement.style.color = 'var(--ios-green)';
-        } else if (accValue >= 60) {
-            accElement.style.color = 'var(--ios-orange)';
-        } else {
-            accElement.style.color = 'var(--ios-red)';
-        }
-
-        document.getElementById('d-m-acc').innerText = s.month_accuracy;
-        document.getElementById('d-rank').innerText = s.month_rank_desc;
-
-        // 计算本月柱状图总巡查数
-        const monthTotal = Object.values(chartData).reduce((a, b) => a + b, 0);
-        document.getElementById('d-m-total').innerText = monthTotal;
-
-        // 奖励状态
-        const awards = data.query_title_award.record_list;
-        document.getElementById('award-list').innerHTML = awards.map(a => `
-            <div class="award-row">
-                <span style="font-size:14px">${a.title_level_name}</span>
-                <span class="status-tag ${a.status === 1 ? 'status-unlocked' : 'status-locked'}">
-                    ${a.status === 1 ? '● 已解锁' : '○ 未解锁'}
-                </span>
-            </div>
-        `).join('');
-
-        document.getElementById('reportContent').style.display = 'block';
-        document.getElementById('exportControls').style.display = 'block';
-        
-        updateChart();
-    }
-
-    // ... (后续 updateChart 和 exportAsImage 函数保持不变)
-    document.getElementById('toggleAxis').onclick = () => {
-        isHorizontal = !isHorizontal;
-        document.getElementById('toggleAxis').innerText = isHorizontal ? "切换纵向显示" : "切换横向显示";
-        updateChart();
-    };
-
-    function updateChart() {
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        const labels = Object.keys(chartData).sort();
-        const vals = labels.map(l => chartData[l]);
-        const inner = document.getElementById('chartInner');
-        const box = document.getElementById('chartBox');
-        if (myChart) myChart.destroy();
-        if (isHorizontal) {
-            inner.style.width = '100%'; inner.style.height = (labels.length * 35) + 'px'; box.style.height = 'auto';
-        } else {
-            const minWidth = labels.length * 45; 
-            inner.style.width = Math.max(box.offsetWidth, minWidth) + 'px'; inner.style.height = '280px'; box.style.height = '280px';
-        }
-        myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels.map(l => l.substring(5)),
-                datasets: [{
-                    label: '巡查数', data: vals, backgroundColor: '#007AFF', borderRadius: 4, barPercentage: 0.7
-                }]
-            },
-            options: {
-                indexAxis: isHorizontal ? 'y' : 'x',
-                responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: !isHorizontal }, ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 45, minRotation: 45 } },
-                    y: { grid: { display: isHorizontal }, ticks: { font: { size: 10 } } }
-                }
-            }
+    // 勋章图也内联，导出的单文件才真正自包含
+    let medal = '';
+    try{
+      const im = $('avatarImg');
+      if (im && !im.hidden && im.src){
+        const r = await fetch(im.src);
+        const b = await r.blob();
+        medal = await new Promise(res => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = () => res('');
+          fr.readAsDataURL(b);
         });
-    }
+      }
+    }catch(_){}
 
-    async function exportAsImage() {
-        const target = document.getElementById('captureTarget');
-        const btn = document.querySelector('.download-btn');
-        const originalText = btn.innerText;
-        btn.innerText = "正在渲染长图...";
-        try {
-            window.scrollTo(0,0);
-            const canvas = await html2canvas(target, {
-                backgroundColor: '#F2F2F7', scale: 2, useCORS: true,
-                width: target.scrollWidth, height: target.scrollHeight,
-                windowWidth: target.scrollWidth, windowHeight: target.scrollHeight
-            });
-            const link = document.createElement('a');
-            link.download = `巡查报告_${new Date().getTime()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        } catch (err) { alert("保存失败"); } finally { btn.innerText = originalText; }
-    }
+    const data = JSON.stringify(payload).replace(/<\//g, '<\\/');
+    const inject = '<script>window.__MEDAL__ = ' + JSON.stringify(medal)
+                 + ';window.__DATA__ = ' + data + ';<\/script>';
+    const ph = '<script>window.__DATA__ = null;<\/script>';
+    src = src.includes(ph)
+      ? src.replace(ph, inject)
+      : src.replace(/<script>window\.__DATA__ = [\s\S]*?;<\/script>/, inject);
+
+    const blob = new Blob([src], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '巡查报告_' + new Date().toISOString().slice(0, 10) + '.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }catch(e){ alert('导出失败：' + e.message); }
+  finally{ btn.textContent = old; btn.disabled = false; }
+};
+
+/* 选文件：input 放在 body 末尾、1px 透明，任何状态下都能拉起选择器 */
+function pickFile(){ $('fileInput').click(); }
+
+$('btnImport').onclick = pickFile;
+$('dropZone').onclick = pickFile;
+$('dropZone').onkeydown = e => {
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pickFile(); }
+};
+
+$('fileInput').onchange = e => {
+  const files = e.target.files;
+  if (!files || !files.length) return;
+  importFiles(files).finally(() => { e.target.value = ''; });
+};
+
+/* 拖拽 */
+const dz = $('dropZone');
+if (dz){
+  ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, e => {
+    e.preventDefault(); dz.classList.add('over');
+  }));
+  ['dragleave', 'dragend'].forEach(t => dz.addEventListener(t, e => {
+    e.preventDefault(); dz.classList.remove('over');
+  }));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('over');
+    if (e.dataTransfer && e.dataTransfer.files.length) importFiles(e.dataTransfer.files);
+  });
+}
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+boot();
 </script>
 </body>
 </html>
