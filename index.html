@@ -16,7 +16,7 @@
 (function(){
   try{
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    var V = '20261110i';
+    var V = '20261110k';
     var u = new URL(location.href);
     if (u.searchParams.get('v') !== V){
       u.searchParams.set('v', V);
@@ -163,6 +163,28 @@
   .btn.ghost{background:rgba(120,120,128,.12);color:var(--ink2)}
   .btn[disabled]{opacity:.55;cursor:default}
   .src{font-size:11px;color:#B0B0B6;text-align:center;margin-top:14px}
+  .foot-link{width:100%;text-align:center;font-size:11.5px;color:#B0B0B6;
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px 0}
+
+  /* 导出图片：预览遮罩（手机上长按保存，桌面点下载） */
+  .shot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;
+    background:rgba(0,0,0,.93);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .shot[hidden]{display:none!important}
+  .shot-bar{display:flex;align-items:center;gap:8px;padding:12px 14px;flex:none}
+  .shot-bar .tip{flex:1;color:rgba(255,255,255,.86);font-size:12.5px;line-height:1.4}
+  .shot-bar .btn{padding:8px 15px;font-size:12.5px;border-radius:18px}
+  .shot-bar .btn.ghost{background:rgba(255,255,255,.15);color:#fff}
+  .shot-bar .btn.primary{box-shadow:none}
+  .shot-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;
+    padding:0 12px 20px;display:flex;align-items:flex-start;justify-content:center}
+  .shot-body img{width:100%;max-width:560px;height:auto;display:block;
+    border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.55)}
+
+  /* 导出瞬间的收边：藏掉交互控件，收窄底部留白，让画面就是「报告本身」 */
+  body.shot-mode #toggleAxis,
+  body.shot-mode .cal-nav button,
+  body.shot-mode .foot{display:none!important}
+  body.shot-mode .page{padding-bottom:26px}
   @media (max-width:420px){
     .kpis{grid-template-columns:repeat(2,1fr)}
     .grid2{grid-template-columns:1fr}
@@ -292,13 +314,23 @@
 
 
       <div class="foot" data-html2canvas-ignore="true">
-        <button class="btn primary" id="btnImg">保存长图</button>
-        <button class="btn ghost" id="btnHtml">导出单文件报告</button>
+        <button class="btn primary" id="btnImg">导出图片数据</button>
         <button class="btn ghost" id="btnImport">手动导入</button>
+        <a class="foot-link" id="btnHtml" role="button">保存网页版（离线 HTML）</a>
       </div>
       <div class="src" id="srcNote"></div>
     </div>
   </div>
+</div>
+
+<!-- 导出图片预览：手机长按保存，桌面点下载 -->
+<div class="shot" id="shotMask" hidden>
+  <div class="shot-bar">
+    <span class="tip">长按图片可保存到相册</span>
+    <button class="btn primary" id="shotSave">下载</button>
+    <button class="btn ghost" id="shotClose">关闭</button>
+  </div>
+  <div class="shot-body"><img id="shotImg" alt="巡查数据"></div>
 </div>
 
 <!-- 必须放在所有 hidden 容器外面：祖先 display:none 时 input.click() 会被浏览器忽略 -->
@@ -971,23 +1003,106 @@ $('toggleAxis').onclick = () => {
   renderDaily(payload.calendar || {}, payload.day_permit || 0);
 };
 
+/* ---------------------------------------------------------------- 导出图片 */
+let shotURL = '';
+let shotScroll = 0;
+
+function shotName(){
+  const ts = (payload && payload.latest && payload.latest.ts) || '';
+  const m = ts.match(/\d{4}-\d{2}-\d{2}/);
+  return '巡查数据_' + (m ? m[0] : new Date().toISOString().slice(0, 10)) + '.png';
+}
+
+function openShot(url){
+  if (shotURL) URL.revokeObjectURL(shotURL);
+  shotURL = url;
+  $('shotImg').src = url;
+  $('shotMask').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeShot(){
+  $('shotMask').hidden = true;
+  document.body.style.overflow = '';
+  $('shotImg').removeAttribute('src');
+  if (shotURL){ URL.revokeObjectURL(shotURL); shotURL = ''; }
+  window.scrollTo(0, shotScroll);      // 关掉后回到导出前的位置
+}
+
+$('shotClose').onclick = closeShot;
+$('shotMask').onclick = e => { if (e.target === $('shotMask')) closeShot(); };
+$('shotSave').onclick = () => {
+  if (!shotURL) return;
+  const a = document.createElement('a');
+  a.href = shotURL;
+  a.download = shotName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+
+/* 按当前页面布局出图：
+   1. 只截 .page 内容区（不含预载容器、遮罩等 body 级固定元素）
+   2. 出图前打上 shot-mode，藏掉切换按钮/月份按钮/底部按钮，收窄底部留白
+   3. 宽度沿用当前渲染宽度，高度取实际内容高度，缩放按「成图宽约 1100px」反推
+   4. 守住 iOS canvas 约 1600 万像素上限，超了自动降采样，避免白图 */
 $('btnImg').onclick = async () => {
-  const btn = $('btnImg'), old = btn.textContent;
-  btn.textContent = '正在渲染…'; btn.disabled = true;
+  const btn = $('btnImg'), label = btn.textContent;
+  if (!payload || !payload.latest || $('report').hidden){
+    alert('请先导入巡查数据，再导出图片。');
+    return;
+  }
+  btn.textContent = '正在生成…'; btn.disabled = true;
+
+  const page = document.querySelector('.page');
+  shotScroll = window.scrollY;
+  document.body.classList.add('shot-mode');
+
   try{
-    window.scrollTo(0, 0);
-    const target = document.body;
-    const canvas = await html2canvas(target, {
-      backgroundColor: '#F2F2F7', scale: 2, useCORS: true,
-      width: target.scrollWidth, height: target.scrollHeight,
-      windowWidth: target.scrollWidth, windowHeight: target.scrollHeight
+    // 强制同步重排：shot-mode 的样式（藏控件、收窄留白）立刻作用到布局。
+    // 这里不能用 requestAnimationFrame 等「下一帧」——后台标签页、省电模式、
+    // 无头浏览器等环境可能根本不产生帧，那样导出会永远卡在「正在生成…」。
+    void page.offsetHeight;
+
+    // 图表动画还没跑完就截图，会截到「画了一半」的环形图/折线图。
+    // stop() 停掉进行中的动画，draw() 是同步重绘——注意不能用 update('none')，
+    // 它要等下一帧才真正重画，在无帧环境下等于没重绘，导出的还是半成品。
+    if (window.Chart && Chart.getChart){
+      document.querySelectorAll('canvas').forEach(cv => {
+        const c = Chart.getChart(cv);
+        if (!c) return;
+        try { c.stop(); c.draw(); } catch (e) {}
+      });
+    }
+
+    const w = Math.round(page.getBoundingClientRect().width);
+    const h = Math.round(page.scrollHeight);
+
+    let scale = Math.min(3, Math.max(2, 1100 / w));
+    while (w * h * scale * scale > 16e6 && scale > 1.1) scale -= 0.15;
+    scale = Math.round(scale * 100) / 100;
+
+    const canvas = await html2canvas(page, {
+      backgroundColor: '#F2F2F7',
+      scale, useCORS: true, logging: false,
+      width: w, height: h,
+      windowWidth: w, windowHeight: h,
+      scrollX: 0, scrollY: 0
     });
-    const a = document.createElement('a');
-    a.download = '巡查报告_' + new Date().toISOString().slice(0, 10) + '.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
-  }catch(e){ alert('保存失败：' + e.message); }
-  finally{ btn.textContent = old; btn.disabled = false; }
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('内容过长，图片生成失败');
+    openShot(URL.createObjectURL(blob));
+  }catch(e){
+    alert('导出失败：' + (e && e.message ? e.message : e));
+  }finally{
+    document.body.classList.remove('shot-mode');
+    btn.textContent = label; btn.disabled = false;
+    // 遮罩开着时 body 是 overflow:hidden，先放开才能恢复滚动位置
+    const maskOpen = !$('shotMask').hidden;
+    document.body.style.overflow = '';
+    window.scrollTo(0, shotScroll);
+    if (maskOpen) document.body.style.overflow = 'hidden';
+  }
 };
 
 /* 导出单文件报告：把 vendor 脚本和数据一起塞进一份 HTML，离线也能打开 */
